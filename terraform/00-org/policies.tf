@@ -1,0 +1,99 @@
+# =====================================================================================
+# R8  SCP  — org-level S3 guardrails (attached to the OU only)
+# R9  RCP  — deny S3 to any principal OUTSIDE this organization (attached to the OU only)
+# =====================================================================================
+
+# ---- R8: Service Control Policy : S3 guardrails -------------------------------------
+# Demonstrates an org-enforced S3 posture that even account admins cannot override.
+# Scoped so it does NOT break this stack's own Terraform deploys or AWS log delivery:
+#   - TLS required for ALL S3 (every call we make is HTTPS anyway)
+#   - SSE-KMS required on PutObject to the DATA buckets (phi-*) only — log buckets exempt
+#   - account-level Block-Public-Access changes locked to the deploy role
+resource "aws_organizations_policy" "scp_s3_guardrails" {
+  name        = "ith-scp-s3-guardrails"
+  description = "S3 org guardrails: enforce TLS, SSE-KMS on PHI puts, protect BPA."
+  type        = "SERVICE_CONTROL_POLICY"
+
+  content = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "DenyInsecureTransport"
+        Effect    = "Deny"
+        Action    = "s3:*"
+        Resource  = "*"
+        Condition = { Bool = { "aws:SecureTransport" = "false" } }
+      },
+      {
+        Sid      = "DenyUnencryptedPhiUploads"
+        Effect   = "Deny"
+        Action   = "s3:PutObject"
+        Resource = "arn:aws:s3:::phi-*/*"
+        Condition = {
+          StringNotEquals = { "s3:x-amz-server-side-encryption" = "aws:kms" }
+        }
+      },
+      {
+        Sid      = "DenyMissingSseHeaderOnPhi"
+        Effect   = "Deny"
+        Action   = "s3:PutObject"
+        Resource = "arn:aws:s3:::phi-*/*"
+        Condition = {
+          Null = { "s3:x-amz-server-side-encryption" = "true" }
+        }
+      },
+      {
+        Sid      = "ProtectAccountPublicAccessBlock"
+        Effect   = "Deny"
+        Action   = "s3:PutAccountPublicAccessBlock"
+        Resource = "*"
+        Condition = {
+          ArnNotLike = {
+            "aws:PrincipalArn" = "arn:aws:iam::*:role/OrganizationAccountAccessRole"
+          }
+        }
+      }
+    ]
+  })
+
+  tags = local.tags
+}
+
+resource "aws_organizations_policy_attachment" "scp_to_ou" {
+  policy_id = aws_organizations_policy.scp_s3_guardrails.id
+  target_id = aws_organizations_organizational_unit.ith.id
+}
+
+# ---- R9: Resource Control Policy : S3 only reachable from inside THIS org ------------
+# RCPs evaluate on the RESOURCE side, so this blocks confused-deputy / external-principal
+# access to our S3 even if a bucket policy were ever mis-set. AWS service principals are
+# excluded (BoolIfExists aws:PrincipalIsAWSService) so log delivery / replication still work.
+resource "aws_organizations_policy" "rcp_s3_org_only" {
+  name        = "ith-rcp-s3-org-only"
+  description = "Deny S3 access to any principal outside this AWS organization."
+  type        = "RESOURCE_CONTROL_POLICY"
+
+  content = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "DenyS3OutsideOrg"
+        Effect    = "Deny"
+        Principal = "*"
+        Action    = "s3:*"
+        Resource  = "*"
+        Condition = {
+          StringNotEqualsIfExists = { "aws:PrincipalOrgID" = local.org_id }
+          BoolIfExists            = { "aws:PrincipalIsAWSService" = "false" }
+        }
+      }
+    ]
+  })
+
+  tags = local.tags
+}
+
+resource "aws_organizations_policy_attachment" "rcp_to_ou" {
+  policy_id = aws_organizations_policy.rcp_s3_org_only.id
+  target_id = aws_organizations_organizational_unit.ith.id
+}
