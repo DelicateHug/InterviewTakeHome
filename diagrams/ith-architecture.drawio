@@ -1,0 +1,414 @@
+<mxfile host="app.diagrams.net" type="device">
+  <diagram name="1. Org &amp; Guardrails" id="ith-page-1">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ===== Title + key ===== -->
+        <mxCell id="p1-title" value="Page 1 &#8212; AWS Organization &amp; Guardrails (SCP + RCP)" style="text;html=1;align=left;verticalAlign=middle;fontSize=20;fontStyle=1;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="900" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="p1-sub" value="Isolation discipline: SCP + RCP attach to the InterviewTakeHome OU ONLY. Existing accounts &amp; identities are untouched. (R6, R8, R9)" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontStyle=2;whiteSpace=wrap;fontColor=#555555;" vertex="1" parent="1">
+          <mxGeometry x="40" y="56" width="1000" height="22" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Org root ===== -->
+        <mxCell id="p1-org" value="[01] AWS Organization &#8212; o-ncxqr8pp2c&#10;(FeatureSet ALL)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="540" y="110" width="520" height="64" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p1-root" value="[02] Org Root &#8212; r-33e3&#10;Policy types ENABLED: SERVICE_CONTROL_POLICY (SCP) + RESOURCE_CONTROL_POLICY (RCP)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="500" y="220" width="600" height="64" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Management account ===== -->
+        <mxCell id="p1-mgmt" value="[03] Management account &#8212; 337066574719&#10;(&quot;Managment&quot;, dylanheathsmart@gmail.com)&#10;Hosts: Identity Center instance (see Page 3)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="120" y="360" width="420" height="84" as="geometry" />
+        </mxCell>
+
+        <!-- ===== OU container ===== -->
+        <mxCell id="p1-ou" value="[04] OU: InterviewTakeHome &#8212; ou-33e3-5p8xygxw&#10;(isolated; the ONLY attach target for the SCP &amp; RCP below)" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#eef5ff;strokeColor=#6c8ebf;dashed=1;fontStyle=1;fontSize=14;container=1;collapsible=0;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="600" y="360" width="900" height="620" as="geometry" />
+        </mxCell>
+
+        <!-- member account inside OU -->
+        <mxCell id="p1-acct" value="[05] Member account: ith-workload &#8212; 118821711925&#10;(dylanheathsmart+ith-workload@gmail.com)&#10;Region ap-southeast-1 &#183; all workload + data-plane resources (Page 2)&#10;CloudTrail / GuardDuty / alarms are account-level (Page 4)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;verticalAlign=top;spacingTop=6;" vertex="1" parent="p1-ou">
+          <mxGeometry x="40" y="60" width="500" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- SCP -->
+        <mxCell id="p1-scp" value="[06] SCP: ith-scp-s3-guardrails&#10;(identity/permission guardrail &#8212; what principals in the OU may DO)&#10;&#8226; Deny s3:* unless aws:SecureTransport=true (TLS required)&#10;&#8226; Deny s3:PutObject on phi-* unless SSE = aws:kms (SSE-KMS required)&#10;&#8226; Deny s3:PutBucketPublicAccessBlock / disabling BPA (protect Block Public Access)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="p1-ou">
+          <mxGeometry x="40" y="230" width="820" height="150" as="geometry" />
+        </mxCell>
+
+        <!-- RCP -->
+        <mxCell id="p1-rcp" value="[07] RCP: ith-rcp-s3-org-only&#10;(resource guardrail &#8212; who, from ANYWHERE, may touch resources in the OU)&#10;&#8226; Deny s3:* unless aws:PrincipalOrgID == o-ncxqr8pp2c&#10;&#8226; Blocks any principal OUTSIDE this org (confused-deputy / cross-account exfil)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="p1-ou">
+          <mxGeometry x="40" y="410" width="820" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Edges ===== -->
+        <mxCell id="p1-e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#9673a6;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="p1-org" target="p1-root">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p1-e2" value="contains" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#6c8ebf;fontSize=11;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="p1-root" target="p1-mgmt">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="650" y="320" /><mxPoint x="330" y="320" /></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="p1-e3" value="contains OU" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#6c8ebf;fontSize=11;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.4;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="p1-root" target="p1-ou">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="950" y="330" /></Array></mxGeometry>
+        </mxCell>
+        <!-- SCP attaches to OU (applies to member account) -->
+        <mxCell id="p1-e-scp" value="attached to OU &#8594; applies to acct" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;dashed=1;strokeColor=#82b366;fontSize=11;fontStyle=1;exitX=0.25;exitY=0;exitDx=0;exitDy=0;entryX=0.25;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="p1-scp" target="p1-acct">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="845" y="565" /></Array></mxGeometry>
+        </mxCell>
+        <!-- RCP attaches to OU (applies to member account) -->
+        <mxCell id="p1-e-rcp" value="attached to OU &#8594; applies to acct" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;dashed=1;strokeColor=#d79b00;fontSize=11;fontStyle=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p1-rcp" target="p1-acct">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1480" y="830" /><mxPoint x="1480" y="480" /></Array></mxGeometry>
+        </mxCell>
+
+        <!-- ===== Legend ===== -->
+        <mxCell id="p1-legend" value="LEGEND &amp; NOTES&#10;&#8226; [02] Org root r-33e3 has BOTH policy types enabled; policies attach to the OU [04] only (blast-radius = this OU).&#10;&#8226; SCP [06] = identity guardrail (a ceiling on what principals IN the OU can DO). RCP [07] = resource guardrail (who, from anywhere, can touch RESOURCES in the OU).&#10;&#8226; Together they enforce: TLS-only, SSE-KMS on phi-* puts, BPA stays on (R8) and S3 reachable by org principals only (R9).&#10;&#8226; Requirements: R6 (1 mgmt + 1 OU + 1 member acct), R8 (SCP), R9 (RCP). Controls doc: docs/design.md." style="text;html=1;align=left;verticalAlign=top;fontSize=11;whiteSpace=wrap;spacingLeft=8;spacingTop=6;fillColor=#f5f5f5;strokeColor=#999999;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="120" y="640" width="440" height="200" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="2. Data Plane (4 paths)" id="ith-page-2">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2400" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ===== Title ===== -->
+        <mxCell id="p2-title" value="Page 2 &#8212; Data Plane: 4 controlled paths to the sensitive bucket (R1, R7, R15, R16, R17, C1&#8211;C4)" style="text;html=1;align=left;verticalAlign=middle;fontSize=20;fontStyle=1;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="1400" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="p2-sub" value="Account ith-workload 118821711925 &#183; ap-southeast-1 &#183; primary flow runs left &#8594; right toward [20] phi-sensitive. Colors: blue=compute, green=path, orange=network/endpoint, purple=KMS, red=data." style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontStyle=2;whiteSpace=wrap;fontColor=#555555;" vertex="1" parent="1">
+          <mxGeometry x="40" y="56" width="1600" height="22" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== ON-PREM VPC ===================== -->
+        <mxCell id="p2-onprem" value="[10] On-prem VPC &#8212; 192.168.0.0/16  (has IGW / internet)" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#fff5e6;strokeColor=#d79b00;dashed=1;fontStyle=1;fontSize=13;container=1;collapsible=0;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="120" width="380" height="360" as="geometry" />
+        </mxCell>
+        <mxCell id="p2-k3s" value="[11] on-prem k3s node&#10;EC2 i-0a3dfcb0&#8230;&#10;(pod / node IAM role)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="p2-onprem">
+          <mxGeometry x="40" y="60" width="300" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="p2-onprem-sg" value="[12] on-prem node SG&#10;(used as SOURCE in endpoint SG ingress&#10;&#8212; SG-as-source over peering, R17)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;dashed=1;" vertex="1" parent="p2-onprem">
+          <mxGeometry x="40" y="180" width="300" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="p2-igw" value="IGW" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="p2-onprem">
+          <mxGeometry x="160" y="290" width="60" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== WORKLOAD VPC ===================== -->
+        <mxCell id="p2-wl" value="[13] Workload VPC &#8212; 10.20.0.0/16  (NO internet &#8212; no IGW / no NAT)" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#eef5ff;strokeColor=#6c8ebf;dashed=1;fontStyle=1;fontSize=13;container=1;collapsible=0;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="560" y="120" width="1000" height="900" as="geometry" />
+        </mxCell>
+
+        <!-- compute column inside workload VPC -->
+        <mxCell id="p2-lambda" value="[14] Lambda &quot;ith-redactor&quot;&#10;(IAM-auth Function URL)&#10;exec role &#8594; reads via Object Lambda AP&#10;returns REDACTED / de-identified only (C2)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="p2-wl">
+          <mxGeometry x="30" y="60" width="320" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="p2-ec2" value="[15] EC2 web app  i-004a7375&#8230;&#10;SSM Session Manager ONLY &#8212; no key pair, no SSH (C3)&#10;EC2 instance role reads S3 &#8212; the ONLY human read path (P3 / C1)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="p2-wl">
+          <mxGeometry x="30" y="190" width="320" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="p2-s3role" value="[16] &quot;s3&quot; reader role&#10;direct S3 read (CLI/SDK)&#10;GATED on aws:sourceVpce == [18] (P4 / R13)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="p2-wl">
+          <mxGeometry x="30" y="320" width="320" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="p2-appsg" value="[17] app / web SG&#10;(used as SOURCE in endpoint SG ingress &#8212; R17)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;dashed=1;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="p2-wl">
+          <mxGeometry x="30" y="440" width="320" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- endpoints column inside workload VPC -->
+        <mxCell id="p2-gw" value="[18] S3 GATEWAY endpoint&#10;vpce-0d4239508&#8230;&#10;(route-table prefix list; in-VPC only &#8212; NOT reachable across peering)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="p2-wl">
+          <mxGeometry x="420" y="190" width="300" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="p2-if-s3" value="[19] S3 INTERFACE endpoint&#10;vpce-000ca0be9&#8230;&#10;(ENI + private DNS; reachable across peering)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="p2-wl">
+          <mxGeometry x="420" y="320" width="300" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- endpoints SG -->
+        <mxCell id="p2-epsg" value="[21] endpoints security group&#10;Ingress 443 FROM [17] app SG  AND  FROM [12] on-prem node SG&#10;(SG-as-source, incl. cross-VPC over peering &#8212; R17)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;dashed=1;" vertex="1" parent="p2-wl">
+          <mxGeometry x="380" y="450" width="380" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- shared services interface endpoints group -->
+        <mxCell id="p2-ifgrp" value="[22] Interface VPC endpoints (shared services)" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;fontStyle=1;fontSize=12;container=1;collapsible=0;spacingTop=6;" vertex="1" parent="p2-wl">
+          <mxGeometry x="380" y="590" width="560" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="p2-if-ssm" value="ssm" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="p2-ifgrp">
+          <mxGeometry x="20" y="40" width="80" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p2-if-ssmm" value="ssmmessages" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="p2-ifgrp">
+          <mxGeometry x="110" y="40" width="100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p2-if-ec2m" value="ec2messages" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="p2-ifgrp">
+          <mxGeometry x="220" y="40" width="100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p2-if-sts" value="sts" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="p2-ifgrp">
+          <mxGeometry x="330" y="40" width="60" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p2-if-kms" value="kms" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="p2-ifgrp">
+          <mxGeometry x="400" y="40" width="60" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p2-if-logs" value="logs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="p2-ifgrp">
+          <mxGeometry x="470" y="40" width="60" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p2-ifgrp-note" value="protected by endpoints SG [21]; enable SSM (no SSH) &amp; private control-plane calls" style="text;html=1;align=left;verticalAlign=middle;fontSize=10;fontStyle=2;fontColor=#7a6a00;" vertex="1" parent="p2-ifgrp">
+          <mxGeometry x="20" y="95" width="520" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Object Lambda Access Point -->
+        <mxCell id="p2-olap" value="[23] S3 Object Lambda Access Point&#10;&quot;ith-sensitive-ap&quot;&#10;invokes [14] redactor on GetObject" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="p2-wl">
+          <mxGeometry x="420" y="60" width="300" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== KMS column ===================== -->
+        <mxCell id="p2-kms" value="[24] KMS &#8212; per-patient CMKs&#10;alias/ith/patient/*&#10;(one CMK per patient &#8212; R15)&#10;encrypts objects in [20];&#10;disable one key &#8594; one patient goes dark" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="1640" y="700" width="320" height="150" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== BUCKETS ===================== -->
+        <mxCell id="p2-sensitive" value="[20] S3  phi-sensitive-118821711925&#10;full ePHI (tokenized) &#8212; VPC-LOCKED&#10;bucket policy: GetObject only when aws:sourceVpce in {[18],[19]}&#10;SSE-KMS (per-patient CMK [24]) &#183; TLS-only &#183; BPA on (R1)" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;align=center;verticalAlign=top;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="1640" y="180" width="360" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="p2-deident" value="[25] S3  phi-deident-118821711925&#10;de-identified copy &#8212; ORG-WIDE (no VPC condition)&#10;still org-locked (RCP), TLS-only, SSE-KMS (C4)" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;align=center;verticalAlign=top;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="1640" y="450" width="360" height="150" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== PEERING ===================== -->
+        <mxCell id="p2-peer" value="[26] VPC peering&#10;on-prem &#8596; workload" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="450" y="280" width="120" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== EDGES (paths) ===================== -->
+        <!-- P2: k3s -> peering -> interface endpoint -->
+        <mxCell id="p2-eP2a" value="P2 read across peering" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#82b366;strokeWidth=2;fontSize=11;fontStyle=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p2-k3s" target="p2-peer">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="440" y="220" /><mxPoint x="440" y="325" /></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="p2-eP2b" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#82b366;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p2-peer" target="p2-if-s3">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="940" y="325" /><mxPoint x="940" y="445" /></Array></mxGeometry>
+        </mxCell>
+        <!-- P3: EC2 -> gateway endpoint -->
+        <mxCell id="p2-eP3" value="P3 human read (instance role)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#82b366;strokeWidth=2;fontSize=11;fontStyle=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="p2-wl" source="p2-ec2" target="p2-gw">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="385" y="240" /></Array></mxGeometry>
+        </mxCell>
+        <!-- P4: s3 role -> gateway endpoint (gated sourceVpce) -->
+        <mxCell id="p2-eP4" value="P4 direct read (gated aws:sourceVpce)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#82b366;strokeWidth=2;fontSize=11;fontStyle=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="p2-wl" source="p2-s3role" target="p2-gw">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="385" y="365" /></Array></mxGeometry>
+        </mxCell>
+        <!-- P1: lambda -> OLAP -->
+        <mxCell id="p2-eP1" value="P1 redactor reads" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#82b366;strokeWidth=2;fontSize=11;fontStyle=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="p2-wl" source="p2-lambda" target="p2-olap">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- gateway endpoint -> sensitive bucket -->
+        <mxCell id="p2-egw-s3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#b85450;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.6;entryDx=0;entryDy=0;" edge="1" parent="1" source="p2-gw" target="p2-sensitive">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1300" y="430" /><mxPoint x="1300" y="300" /></Array></mxGeometry>
+        </mxCell>
+        <!-- interface endpoint -> sensitive bucket -->
+        <mxCell id="p2-eif-s3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#b85450;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.4;entryDx=0;entryDy=0;" edge="1" parent="1" source="p2-if-s3" target="p2-sensitive">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1340" y="445" /><mxPoint x="1340" y="260" /></Array></mxGeometry>
+        </mxCell>
+        <!-- OLAP -> sensitive bucket (supporting AP) -->
+        <mxCell id="p2-eolap-s3" value="supporting access point" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#b85450;strokeWidth=2;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.2;entryDx=0;entryDy=0;" edge="1" parent="1" source="p2-olap" target="p2-sensitive">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1380" y="130" /><mxPoint x="1380" y="220" /></Array></mxGeometry>
+        </mxCell>
+        <!-- KMS -> sensitive bucket -->
+        <mxCell id="p2-ekms" value="encrypts objects (per-patient)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;dashed=1;strokeColor=#9673a6;strokeWidth=2;fontSize=10;exitX=1;exitY=0.3;exitDx=0;exitDy=0;entryX=1;entryY=0.85;entryDx=0;entryDy=0;" edge="1" parent="1" source="p2-kms" target="p2-sensitive">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="2050" y="745" /><mxPoint x="2050" y="350" /></Array></mxGeometry>
+        </mxCell>
+        <!-- KMS -> deident bucket -->
+        <mxCell id="p2-ekms2" value="encrypts" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;dashed=1;strokeColor=#9673a6;fontSize=10;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="p2-kms" target="p2-deident">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1800" y="650" /></Array></mxGeometry>
+        </mxCell>
+        <!-- SG-as-source ingress: app SG -> endpoints SG -->
+        <mxCell id="p2-esg-app" value="443 (SG src)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=open;dashed=1;strokeColor=#b85450;fontSize=10;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.2;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="p2-wl" source="p2-appsg" target="p2-epsg">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- SG-as-source ingress: on-prem node SG -> endpoints SG (cross-VPC) -->
+        <mxCell id="p2-esg-onprem" value="443 (SG src, cross-VPC over peering)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=open;dashed=1;strokeColor=#b85450;fontSize=10;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p2-onprem-sg" target="p2-epsg">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="190" y="1080" /><mxPoint x="1530" y="1080" /><mxPoint x="1530" y="615" /></Array></mxGeometry>
+        </mxCell>
+
+        <!-- ===================== ANNOTATIONS ===================== -->
+        <mxCell id="p2-note1" value="&#9888; gateway endpoints aren&#39;t reachable across peering &#8594; on-prem [11] must use the INTERFACE endpoint [19] (ENI-backed, private DNS)." style="text;html=1;align=left;verticalAlign=top;fontSize=12;fontStyle=1;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;rounded=1;spacingLeft=8;spacingTop=6;fontColor=#7a6a00;" vertex="1" parent="1">
+          <mxGeometry x="40" y="520" width="480" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="p2-note2" value="&#9888; VPC peering [26] is non-transitive &amp; N&#178; (each new VPC = new peering + route entries both sides). Transit Gateway is the scalable successor (PrivateLink for a single endpoint service is the other option)." style="text;html=1;align=left;verticalAlign=top;fontSize=12;fontStyle=1;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;rounded=1;spacingLeft=8;spacingTop=6;fontColor=#7a6a00;" vertex="1" parent="1">
+          <mxGeometry x="40" y="610" width="480" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== LEGEND ===================== -->
+        <mxCell id="p2-legend" value="THE 4 PATHS TO [20] phi-sensitive&#10;P1 &#8212; Lambda redactor [14] &#8594; Object Lambda AP [23] &#8594; bucket; returns REDACTED only (C2).&#10;P2 &#8212; on-prem k3s [11] &#8594; peering [26] &#8594; S3 INTERFACE endpoint [19] &#8594; bucket (full object).&#10;P3 &#8212; EC2 web app [15] (instance role, SSM-only) &#8594; S3 GATEWAY endpoint [18] &#8594; bucket; ONLY human read path (C1).&#10;P4 &#8212; &quot;s3&quot; reader role [16] direct read, gated aws:sourceVpce==[18] (R13).&#10;&#10;[25] phi-deident is the org-wide de-identified copy (no VPC condition) &#8212; demonstrates the VPC-condition delta (C4).&#10;Controls docs: docs/data-plane-paths.md, docs/encryption-and-tokenization.md." style="text;html=1;align=left;verticalAlign=top;fontSize=11;whiteSpace=wrap;spacingLeft=8;spacingTop=6;fillColor=#f5f5f5;strokeColor=#999999;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="730" width="480" height="290" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="3. Identity &amp; MFA" id="ith-page-3">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="1150" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ===== Title ===== -->
+        <mxCell id="p3-title" value="Page 3 &#8212; Identity &amp; Phishing-resistant MFA (R2, R3, R10, R13)" style="text;html=1;align=left;verticalAlign=middle;fontSize=20;fontStyle=1;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="1100" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="p3-sub" value="Primary flow top &#8594; bottom: Entra (IdP) federates into AWS IAM Identity Center, which grants 3 permission sets. Login URL: https://d-96677e53fe.awsapps.com/start/" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontStyle=2;whiteSpace=wrap;fontColor=#555555;" vertex="1" parent="1">
+          <mxGeometry x="40" y="56" width="1200" height="22" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Entra IdP ===== -->
+        <mxCell id="p3-entra" value="[40] Microsoft Entra ID  (the IdP)&#10;tenant delicatehug.com &#183; AAD_PREMIUM P1&#10;(Conditional Access + auth strengths available)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1;align=center;verticalAlign=top;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="520" y="110" width="460" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Conditional Access (side, disabled) ===== -->
+        <mxCell id="p3-ca" value="[41] Conditional Access policy&#10;&#8226; Grant requires authentication strength = Phishing-resistant MFA&#10;&#160;&#160;(FIDO2 / passkey / WHfB / CBA)&#10;&#8226; Block sign-in that does NOT satisfy the strength (non-MFA blocked, R3)&#10;&#8226; Scope: interview-admins group on the AWS access app" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;align=left;verticalAlign=top;spacingLeft=8;spacingTop=8;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="90" width="540" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="p3-ca-flag" value="&#9888; Written as IaC but DISABLED&#10;(enable_entra_changes = false &#8212; no-breaking-changes guardrail; documented as suggested, not enabled)" style="text;html=1;align=center;verticalAlign=middle;fontSize=12;fontStyle=1;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;rounded=1;fontColor=#7a6a00;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="260" width="540" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Identity Center ===== -->
+        <mxCell id="p3-idc" value="[42] AWS IAM Identity Center&#10;instance ssoins-46812a8&#8230; &#183; identity store d-96677e53fe (mgmt acct 337066574719)&#10;Login URL: https://d-96677e53fe.awsapps.com/start/" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14;fontStyle=1;align=center;verticalAlign=top;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="500" y="320" width="500" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Permission sets container ===== -->
+        <mxCell id="p3-psgrp" value="[43] Permission sets (created for real; inert until assigned &#8212; assignments doc-only)" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#eef5ff;strokeColor=#6c8ebf;dashed=1;fontStyle=1;fontSize=13;container=1;collapsible=0;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="120" y="520" width="1260" height="240" as="geometry" />
+        </mxCell>
+        <mxCell id="p3-ps-super" value="[44] ITH-SuperAdmin&#10;Everything (AdministratorAccess),&#10;incl. KMS.&#10;User: ith-superadmin@&#8230;&#10;Reads details via EC2 web UI (P3)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;align=left;verticalAlign=top;spacingLeft=8;spacingTop=8;" vertex="1" parent="p3-psgrp">
+          <mxGeometry x="40" y="50" width="360" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="p3-ps-admin" value="[45] ITH-Admin&#10;Scoped to relevant services (S3, EC2/VPC,&#10;CloudWatch, CloudTrail, GuardDuty-read).&#10;EXPLICIT DENY kms:*&#10;User: ith-admin@&#8230;&#10;Reads details via EC2 web UI (P3)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;align=left;verticalAlign=top;spacingLeft=8;spacingTop=8;" vertex="1" parent="p3-psgrp">
+          <mxGeometry x="450" y="50" width="360" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="p3-ps-s3" value="[46] ITH-S3Reader&#10;S3 read ONLY when aws:sourceVpce matches&#10;(in-VPC only); denied otherwise.&#10;User: ith-s3@&#8230;&#10;Reads via EC2 web UI (P3) + in-VPC CLI (P4)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;align=left;verticalAlign=top;spacingLeft=8;spacingTop=8;" vertex="1" parent="p3-psgrp">
+          <mxGeometry x="860" y="50" width="360" height="160" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Edges ===== -->
+        <mxCell id="p3-e-scim" value="SCIM provisioning + SAML federation" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#6c8ebf;strokeWidth=2;fontSize=12;fontStyle=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="p3-entra" target="p3-idc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p3-e-ca" value="enforces MFA at sign-in (when enabled)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;dashed=1;strokeColor=#b85450;fontSize=11;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p3-ca-flag" target="p3-entra">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1030" y="290" /><mxPoint x="1030" y="160" /></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="p3-e-grant" value="grants" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#9673a6;strokeWidth=2;fontSize=12;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="p3-idc" target="p3-psgrp">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Legend ===== -->
+        <mxCell id="p3-legend" value="LEGEND &amp; NOTES&#10;&#8226; Entra [40] is the IdP; users are SCIM-provisioned into Identity Center [42] which federates via SAML (R10).&#10;&#8226; Phishing-resistant MFA + non-MFA block live in the CA policy [41] &#8212; written as IaC, left DISABLED to protect the live tenant (R2/R3 doc-only).&#10;&#8226; 3 permission sets [44]/[45]/[46] map to the 3 users; least-privilege deltas: Admin denies kms:*, S3Reader is in-VPC only (R13).&#10;&#8226; All 3 humans read patient DETAILS only via the EC2 web UI (Page 2, P3 / C1). Controls doc: docs/identity-and-mfa.md." style="text;html=1;align=left;verticalAlign=top;fontSize=11;whiteSpace=wrap;spacingLeft=8;spacingTop=6;fillColor=#f5f5f5;strokeColor=#999999;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="120" y="800" width="1260" height="150" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="4. Detect &amp; Respond" id="ith-page-4">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2100" pageHeight="1300" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ===== Title ===== -->
+        <mxCell id="p4-title" value="Page 4 &#8212; Detect &amp; Respond (R4, R11, R12)" style="text;html=1;align=left;verticalAlign=middle;fontSize=20;fontStyle=1;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="900" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="p4-sub" value="Three detection chains converge on one SNS topic [55]; response levers on the right. Primary flow left &#8594; right. Account-level (not org delegated) per the guardrail." style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontStyle=2;whiteSpace=wrap;fontColor=#555555;" vertex="1" parent="1">
+          <mxGeometry x="40" y="56" width="1500" height="22" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== CHAIN A: CloudTrail ===================== -->
+        <mxCell id="p4-trail" value="[50] CloudTrail &quot;ith-trail&quot;&#10;multi-region &#183; log-file validation&#10;KMS-encrypted &#183; S3 data events" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="120" width="300" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="p4-cwl" value="[51] CloudWatch Logs&#10;/ith/cloudtrail" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="400" y="125" width="240" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="p4-mf" value="[52] 9 metric-filter alarms&#10;root usage &#183; console-without-MFA &#183; unauthorized API&#10;IAM/policy change &#183; S3 policy change &#183; KMS disable/sched-delete&#10;CloudTrail tamper &#183; GuardDuty high-sev &#183; AssumeRole-from-unexpected-IP&#10;(+ S3 4xx/AccessDenied spike, SG change)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="700" y="100" width="440" height="130" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== CHAIN B: GuardDuty ===================== -->
+        <mxCell id="p4-gd" value="[53] GuardDuty detector&#10;(all features)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="320" width="300" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="p4-eb-gd" value="[54] EventBridge rule&#10;GuardDuty finding severity &gt;= 4" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="400" y="320" width="300" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== CHAIN C: AssumeRole IP alerter ===================== -->
+        <mxCell id="p4-eb-sts" value="[56] EventBridge rule&#10;on sts:AssumeRole* (AssumeRole / AssumeRoleWithSAML)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="470" width="300" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="p4-lambda" value="[57] Lambda &quot;ith-ip-alerter&quot;&#10;evaluates sourceIPAddress vs allow-list CIDRs&#10;&#8594; alerts on unexpected source IP (R12)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="400" y="470" width="300" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== SNS (convergence) ===================== -->
+        <mxCell id="p4-sns" value="[55] SNS &quot;ith-security-alerts&quot;&#10;KMS-encrypted&#10;&#8594; email subscription" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1280" y="300" width="320" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== RESPONSE LEVERS ===================== -->
+        <mxCell id="p4-resp" value="[58] Response levers (assume-breach)" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#fdecea;strokeColor=#b85450;dashed=1;fontStyle=1;fontSize=13;container=1;collapsible=0;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="1740" y="120" width="320" height="500" as="geometry" />
+        </mxCell>
+        <mxCell id="p4-r1" value="[59] Disable a per-patient KMS key&#10;&#8594; exactly ONE patient goes dark&#10;(per-subject containment / erasure)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="p4-resp">
+          <mxGeometry x="20" y="60" width="280" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="p4-r2" value="[60] Revoke credentials&#10;(rotate / disable access keys,&#10;deny-all on the session)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="p4-resp">
+          <mxGeometry x="20" y="190" width="280" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="p4-r3" value="[61] Quarantine security group&#10;(swap instance/ENI to a no-ingress&#10;/no-egress SG to isolate)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="p4-resp">
+          <mxGeometry x="20" y="320" width="280" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== EDGES ===================== -->
+        <!-- Chain A -->
+        <mxCell id="p4-eA1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#6c8ebf;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p4-trail" target="p4-cwl">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p4-eA2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#6c8ebf;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p4-cwl" target="p4-mf">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p4-eA3" value="alarm &#8594; notify" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#82b366;strokeWidth=2;fontSize=11;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="p4-mf" target="p4-sns">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1440" y="165" /><mxPoint x="1440" y="300" /></Array></mxGeometry>
+        </mxCell>
+        <!-- Chain B -->
+        <mxCell id="p4-eB1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#6c8ebf;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p4-gd" target="p4-eb-gd">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p4-eB2" value="sev &gt;= 4 &#8594; notify" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#82b366;strokeWidth=2;fontSize=11;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p4-eb-gd" target="p4-sns">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1000" y="360" /></Array></mxGeometry>
+        </mxCell>
+        <!-- Chain C -->
+        <mxCell id="p4-eC1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#6c8ebf;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p4-eb-sts" target="p4-lambda">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p4-eC2" value="unexpected IP &#8594; notify (R12)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#82b366;strokeWidth=2;fontSize=11;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="p4-lambda" target="p4-sns">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1440" y="515" /><mxPoint x="1440" y="420" /></Array></mxGeometry>
+        </mxCell>
+        <!-- SNS -> response levers (operator-driven) -->
+        <mxCell id="p4-eResp" value="operator triggers" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;dashed=1;strokeColor=#b85450;strokeWidth=2;fontSize=11;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p4-sns" target="p4-resp">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Legend ===== -->
+        <mxCell id="p4-legend" value="LEGEND &amp; NOTES&#10;&#8226; Chain A: CloudTrail [50] &#8594; CW Logs [51] &#8594; 9 metric-filter alarms [52] &#8594; SNS [55] (R4, R11).&#10;&#8226; Chain B: GuardDuty [53] &#8594; EventBridge sev&gt;=4 [54] &#8594; SNS [55] (R11).&#10;&#8226; Chain C: EventBridge on sts:AssumeRole* [56] &#8594; Lambda ith-ip-alerter [57] &#8594; SNS [55]; alerts on unexpected source IP (R12), backstopped by the AssumeRole metric-filter alarm in [52].&#10;&#8226; Response levers [58]: disable one patient&#39;s KMS key [59] (one patient dark), revoke creds [60], quarantine SG [61].&#10;&#8226; Account-level (not org delegated admin) per the no-breaking-changes guardrail. Controls doc: docs/detection-and-response.md." style="text;html=1;align=left;verticalAlign=top;fontSize=11;whiteSpace=wrap;spacingLeft=8;spacingTop=6;fillColor=#f5f5f5;strokeColor=#999999;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="660" width="1560" height="170" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
