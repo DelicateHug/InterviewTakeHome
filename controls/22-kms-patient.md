@@ -6,14 +6,19 @@
 
 ## Controls applied
 
-- **Prevention:** One CMK per patient (object encrypted under its patient's key); rotation on; key policy grants only the 4 reader roles `Decrypt`/`GenerateDataKey`. Response lever: disable one key → exactly one patient goes dark.
-- **Detection:** CloudTrail kms events; kms-disable-delete filter [34].
-- **Alert:** DisableKey / ScheduleKeyDeletion → kms-disable-delete alarm [35].
+- **Prevention:**
+  - One CMK per patient (object encrypted under its patient's key)
+  - rotation on
+  - key policy grants only the 4 reader roles `Decrypt`/`GenerateDataKey`. Response lever: disable one key → exactly one patient goes dark.
+- **Detection:**
+  - CloudTrail kms events
+  - kms-disable-delete filter [[34]](34-log-group.md).
+- **Alert:** DisableKey / ScheduleKeyDeletion → kms-disable-delete alarm [[35]](35-alarms.md).
 
 ## What would trigger an alert
 
-- Anyone disables or schedules deletion of a patient key (malicious, or an intended response action) → kms-disable-delete alarm [35] → SNS [36].
-- A role not on the key policy tries to `Decrypt` an object → AccessDenied → unauthorized-api alarm [35].
+- Anyone disables or schedules deletion of a patient key (malicious, or an intended response action) → kms-disable-delete alarm [[35]](35-alarms.md) → SNS [[36]](36-sns.md).
+- A role not on the key policy tries to `Decrypt` an object → AccessDenied → unauthorized-api alarm [[35]](35-alarms.md).
 
 ---
 [< controls index](README.md) | [< home](../README.md)

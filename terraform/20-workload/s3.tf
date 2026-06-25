@@ -41,9 +41,9 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "sensitive" {
 
 data "aws_iam_policy_document" "sensitive_bucket" {
   statement {
-    sid     = "DenyInsecureTransport"
-    effect  = "Deny"
-    actions = ["s3:*"]
+    sid       = "DenyInsecureTransport"
+    effect    = "Deny"
+    actions   = ["s3:*"]
     resources = [aws_s3_bucket.sensitive.arn, "${aws_s3_bucket.sensitive.arn}/*"]
     principals {
       type        = "AWS"
@@ -57,9 +57,9 @@ data "aws_iam_policy_document" "sensitive_bucket" {
   }
 
   statement {
-    sid     = "DenyOutsideOrg"
-    effect  = "Deny"
-    actions = ["s3:*"]
+    sid       = "DenyOutsideOrg"
+    effect    = "Deny"
+    actions   = ["s3:*"]
     resources = [aws_s3_bucket.sensitive.arn, "${aws_s3_bucket.sensitive.arn}/*"]
     principals {
       type        = "AWS"
@@ -84,9 +84,9 @@ data "aws_iam_policy_document" "sensitive_bucket" {
   # from outside the VPC; the 3 IdP admin identities are NOT this role, so they remain
   # fully VPC-gated and must still use the EC2 UI.
   statement {
-    sid     = "DenyReadsNotFromVpcOrAccessPoint"
-    effect  = "Deny"
-    actions = ["s3:GetObject", "s3:GetObjectVersion", "s3:ListBucket"]
+    sid       = "DenyReadsNotFromVpcOrAccessPoint"
+    effect    = "Deny"
+    actions   = ["s3:GetObject", "s3:GetObjectVersion", "s3:ListBucket"]
     resources = [aws_s3_bucket.sensitive.arn, "${aws_s3_bucket.sensitive.arn}/*"]
     principals {
       type        = "AWS"
@@ -116,9 +116,9 @@ data "aws_iam_policy_document" "sensitive_bucket" {
 
   # Delegate to same-account access points (lets the Object Lambda access point read, P1).
   statement {
-    sid     = "AllowSameAccountAccessPointDelegation"
-    effect  = "Allow"
-    actions = ["s3:GetObject", "s3:GetObjectVersion", "s3:ListBucket"]
+    sid       = "AllowSameAccountAccessPointDelegation"
+    effect    = "Allow"
+    actions   = ["s3:GetObject", "s3:GetObjectVersion", "s3:ListBucket"]
     resources = [aws_s3_bucket.sensitive.arn, "${aws_s3_bucket.sensitive.arn}/*"]
     principals {
       type        = "AWS"
@@ -133,8 +133,8 @@ data "aws_iam_policy_document" "sensitive_bucket" {
 }
 
 resource "aws_s3_bucket_policy" "sensitive" {
-  bucket = aws_s3_bucket.sensitive.id
-  policy = data.aws_iam_policy_document.sensitive_bucket.json
+  bucket     = aws_s3_bucket.sensitive.id
+  policy     = data.aws_iam_policy_document.sensitive_bucket.json
   depends_on = [aws_s3_bucket_public_access_block.sensitive]
 }
 

@@ -6,11 +6,31 @@
 
 | Sign in with | Permission set | Scope | Password |
 |---|---|---|---|
-| `ith-superadmin@delicatehug.com` | `ITH-SuperAdmin` | everything (capped by account SCP [41]) | `Falcon-Ridge-7742!` |
-| `ith-admin@delicatehug.com` | `ITH-Admin` | relevant services, **`Deny kms:*`** | `Cobalt-Harbor-7742!` |
+| `ith-superadmin@delicatehug.com` | `ITH-SuperAdmin` | everything **except KMS** — a permissions boundary [[42]](controls/42-permission-boundary.md) caps the max; account SCP [[41]](controls/41-account-scp.md) caps the rest | `Falcon-Ridge-7742!` |
+| `ith-admin@delicatehug.com` | `ITH-Admin` | relevant services, **`Deny kms:*`** (inline) | `Cobalt-Harbor-7742!` |
 | `ith-s3@delicatehug.com` | `ITH-S3Reader` | read S3 **only inside the VPC** | `Maple-Lagoon-7742!` |
 
-> Demo accounts only: no Entra-side privileges, scoped to the AWS app, and every action in the one ITH account is bounded by the strict allow-list SCP [41]. 
+> **Two roles, no KMS — *different* mechanisms (the point of [[42]](controls/42-permission-boundary.md)):** `ITH-Admin` is denied KMS by an explicit **`Deny kms:*`** in its policy; `ITH-SuperAdmin` is denied KMS by a **permissions boundary** — a *ceiling* that caps the role's maximum to "everything except `kms:*`" with **no Deny at all**. Even `AdministratorAccess` (`Allow *`) can't reach KMS because the effective permission is `identity ∩ boundary`.
+
+> Demo accounts only: no Entra-side privileges, scoped to the AWS app, and every action in the one ITH account is bounded by the strict allow-list SCP [[41]](controls/41-account-scp.md). 
+
+> **💡 Tip — review this with an AI:** the fastest way through this take-home is to clone/download the repo (or at minimum this `README.md` + the [`controls/`](controls/README.md) folder) locally and load it into the AI assistant of your choice. Every design decision is written up as a `[NN]` control page, so you can ask it to explain a path, quiz you on the controls, or sanity-check the threat model against the code/Terraform — all without touching the live account.
+---
+
+## Key resources
+
+Everything lives in **one account in one region** — copy/paste exact names from here.
+
+| | |
+|---|---|
+| **Region** | `ap-southeast-1` — *all* resources. Calls from outside the VPC (your laptop / CloudShell) return `AccessDenied` **by design**. |
+| **Account** | `ith-workload` — `118821711925` |
+| **Sensitive bucket [[20]](controls/20-s3-sensitive.md)** | **`phi-sensitive-118821711925`** — full tokenized ePHI. VPC-locked (paths P2/P3/P4) or via the Object Lambda access point (P1); a human/laptop with no `vpce` is denied → use the EC2 UI. |
+| **De-identified bucket** | `phi-deident-118821711925` — redacted copy, readable anywhere **in the org** (still TLS-only + KMS + org-locked). |
+| **CloudTrail log bucket** | `ith-cloudtrail-118821711925` |
+| **CloudTrail** | `ith-trail` — multi-region, log-file validation, management **+** S3 object-level (data) events on both buckets. |
+| **CloudWatch alarms** | [console → CloudWatch → Alarms](https://ap-southeast-1.console.aws.amazon.com/cloudwatch/home?region=ap-southeast-1#alarmsV2:?~()) — filter by prefix **`ith-`**. 12 alarms total: 9 CIS-style [[35]](controls/35-alarms.md) + 3 change/CreateUser/detection-tampering [[40]](controls/40-change-alerter.md); the detection stack itself is locked by the protect-detection SCP [[60]](controls/60-protect-detection.md) (prevent + detect). |
+
 ---
 
 ## Architecture
@@ -24,7 +44,8 @@ flowchart TB
   U([user]) --> E["[01] Entra ID (IdP)"]
   E --> CA["[04] Conditional Access<br/>phishing-resistant MFA · doc-only"]
   CA --> IC["[02] Identity Center"]
-  IC --> PS["[03] permission sets<br/>SuperAdmin · Admin no-KMS · S3Reader VPC-only"]
+  IC --> PS["[03] permission sets<br/>SuperAdmin (no KMS · boundary) · Admin (no KMS · deny) · S3Reader VPC-only"]
+  PB["[42] permissions boundary<br/>caps SuperAdmin max = all except kms:*"] -. caps .-> PS
   subgraph ORG["AWS Org o-ncxqr8pp2c"]
     MGMT["[05] Mgmt acct"] --> OU["[06] OU"]
     OU --> ACCT["[09] member acct 118821711925"]
@@ -35,7 +56,7 @@ flowchart TB
   PS -->|assigned on| ACCT
 ```
 
-### Paths to the sensitive bucket [20]
+### Paths to the sensitive bucket [[20]](controls/20-s3-sensitive.md)
 
 - **P1 — Lambda redactor** · *role: basic reader (IAM Function URL).* Returns non-sensitive fields only.
 
@@ -46,7 +67,7 @@ flowchart LR
   L -->|non-sensitive only| R
 ```
 
-- **P2 — On-prem Kubernetes** · *role: on-prem node role [31].* Across VPC peering to the interface endpoint.
+- **P2 — On-prem Kubernetes** · *role: on-prem node role [[31]](controls/31-onprem-role.md).* Across VPC peering to the interface endpoint.
 
 ```mermaid
 flowchart LR
@@ -54,7 +75,7 @@ flowchart LR
   IF --> S["[20] sensitive bucket"]
 ```
 
-- **P3 — EC2 web app (human path)** · *roles: all 3 admins via SSM; reads with EC2 role [29].* The only way a human reads details.
+- **P3 — EC2 web app (human path)** · *roles: all 3 admins via SSM; reads with EC2 role [[29]](controls/29-ec2-role.md).* The only way a human reads details.
 
 ```mermaid
 flowchart LR
@@ -62,7 +83,7 @@ flowchart LR
   E -->|"[13] gateway endpoint"| S["[20] sensitive bucket"]
 ```
 
-- **P4 — `s3` user** · *role: s3 user role [32].* CLI/SDK, allowed only from inside the VPC.
+- **P4 — `s3` user** · *role: s3 user role [[32]](controls/32-s3-reader-role.md).* CLI/SDK, allowed only from inside the VPC.
 
 ```mermaid
 flowchart LR
@@ -75,109 +96,81 @@ flowchart LR
 ```mermaid
 flowchart LR
   CT["[33] CloudTrail"] --> AL["[35] 9 alarms"] --> SNS["[36] SNS"]
-  GD["[37] GuardDuty"] --> SNS
-  IP["[38] IP alerter"] --> SNS
-  CH["[40] change / CreateUser alerter<br/>excludes super admin"] --> SNS
+  GD["[37] GuardDuty<br/>incl. InstanceCredentialExfiltration → R12"] --> SNS
+  CH["[40] change / CreateUser / detection-tampering<br/>alerter · excludes deploy role"] --> SNS
+  SCP60["[60] protect-detection SCP<br/>denies tampering with the monitors"] -. guards .-> CT
+  SCP60 -. guards .-> AL
 ```
+
+> **Watch the alarms live:** [console → CloudWatch → Alarms](https://ap-southeast-1.console.aws.amazon.com/cloudwatch/home?region=ap-southeast-1#alarmsV2:?~()) (filter by prefix `ith-`). Trip one yourself by running any *denied* command below as `ith-s3`, then refresh — the `ith-s3-access-denied` alarm flips to `ALARM`.
 
 ---
 
 ## Demo — try it yourself
 
-Each login below maps to one permission set. Between them they exercise **all four paths (P1–P4)** plus detection. Everything is read-only/reversible — you can't break anything (the account allow-list SCP [41] caps even SuperAdmin).
+The `aws ssm start-session` commands (paths P2/P3) need the **AWS CLI v2** *and* the **Session Manager plugin**. Without the plugin the CLI errors with `SessionManagerPlugin is not found`. Install it once on Windows (PowerShell):
 
-**Get a session (any user) — console GUI, ~30s**
+```powershell
+$u = "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/windows/SessionManagerPluginSetup.exe"
+$o = "$env:TEMP\SessionManagerPluginSetup.exe"
+curl.exe -sSL -o $o $u ; Start-Process $o -Verb RunAs -Wait   # accept the UAC prompt
+```
 
-1. Sign in at **https://d-96677e53fe.awsapps.com/start/** with the user + password from the table at the top.
-2. Expand the **`ith-workload` (118821711925)** account.
-3. **Console:** click the permission-set name (e.g. `ITH-SuperAdmin`) to open the AWS console as that role.
-4. **CLI:** click **Access keys** next to it → copy the env-var block for your shell → paste into your terminal. The commands below now run as that user.
+Official guide (incl. macOS/Linux): <https://docs.aws.amazon.com/systems-manager/latest/userguide/install-plugin-windows.html> — verify with `session-manager-plugin --version`.
+
 
 > Your laptop / CloudShell are **outside the VPC**, so VPC-locked reads return `AccessDenied` *by design* — that's the control working, not a bug. All commands use region `ap-southeast-1`.
 
-### 1. `ith-superadmin` — full admin (the only identity that can use every path)
-
-**CAN do**
+### Every command, once — who it works for
 
 ```bash
-# P3 — human read path: SSM port-forward to the EC2 web app, then open http://localhost:8080
+# ── P1 · basic-reader Lambda — returns NON-sensitive fields only
+#    ✓ super · ✗ admin · ✗ s3 (lambda: not in their sets)
+aws lambda invoke --function-name ith-redactor --payload '{"queryStringParameters":{"key":"patients/088047ea-5cf6-2dfd-3b89-c0c8a1813de8.json"}}' --cli-binary-format raw-in-base64-out --region ap-southeast-1 out.json && cat out.json
+
+# ── P2 · full object across VPC peering via the S3 *interface* endpoint (read runs as node role [31], in-VPC)
+#    ✓ super · – admin (not demoed) · ✗ s3 (no ssm:)
+aws ssm start-session --target i-032177597ad315d32 --region ap-southeast-1          # SSM into the k3s node first…
+aws s3api get-object --bucket phi-sensitive-118821711925 --key patients/088047ea-5cf6-2dfd-3b89-c0c8a1813de8.json --endpoint-url https://bucket.vpce-000ca0be99fa5595c-dkt1diqi.s3.ap-southeast-1.vpce.amazonaws.com --region ap-southeast-1 /tmp/p.json && head -c 300 /tmp/p.json   # …then, inside that session
+
+# ── P3 · human read path — SSM port-forward to the EC2 web app, then open http://localhost:8080
+#    ✓ super · ✓ admin · ✗ s3 (no ssm: in its set)
 aws ssm start-session --target i-004a73751e979b264 --document-name AWS-StartPortForwardingSession --parameters "portNumber=8080,localPortNumber=8080" --region ap-southeast-1
 
-# P1 — basic-reader Lambda returns NON-sensitive fields only
-aws lambda invoke --function-name ith-redactor --payload '{"queryStringParameters":{"key":"patients/088047ea-5cf6-2dfd-3b89-c0c8a1813de8.json"}}' --cli-binary-format raw-in-base64-out --region ap-southeast-1 out.json
-cat out.json
-
-# P2 — full object across VPC peering via the S3 *interface* endpoint. SSM into the on-prem k3s node first:
-aws ssm start-session --target i-08a03eb73f6aaef46 --region ap-southeast-1
-#   then, inside that session (the node's CLI uses node role [31]):
-aws s3api get-object --bucket phi-sensitive-118821711925 --key patients/088047ea-5cf6-2dfd-3b89-c0c8a1813de8.json --endpoint-url https://bucket.vpce-000ca0be99fa5595c-dkt1diqi.s3.ap-southeast-1.vpce.amazonaws.com --region ap-southeast-1 /tmp/p.json && head -c 300 /tmp/p.json
-
-# KMS — the thing ITH-Admin can't: list the per-patient CMKs
-aws kms list-aliases --region ap-southeast-1 --query "Aliases[?starts_with(AliasName, 'alias/ith/')].AliasName"
-
-# Detection — confirm the trail is logging and see the 9 alarms
+# ── Detection · confirm the trail is logging + list all 12 alarms (9 CIS [35] + 3 change [40])
+#    ✓ super · ✓ admin · ✗ s3 (no cloudwatch/cloudtrail in its set)
 aws cloudtrail get-trail-status --name ith-trail --query IsLogging --region ap-southeast-1
 aws cloudwatch describe-alarms --alarm-name-prefix ith- --query "MetricAlarms[].[AlarmName,StateValue]" --output text --region ap-southeast-1
+
 ```
 
-**CAN'T do**
+### Denied by design — guardrails every identity hits
 
 ```bash
-# Read the sensitive bucket directly as a human — VPC-lock [20] denies even SuperAdmin (use P3 instead)
-aws s3api get-object --bucket phi-sensitive-118821711925 --key patients/088047ea-5cf6-2dfd-3b89-c0c8a1813de8.json /tmp/x.json --region ap-southeast-1   # AccessDenied
+# ── KMS · one denial, two DIFFERENT levers — the whole point of [42]
+#    ✗ super  → permissions boundary [42]: allowed set is "everything except kms:*" (NotAction, NO Deny).
+#               Effective perm = identity ∩ boundary, so even AdministratorAccess (Allow *) can't reach kms:*.
+#    ✗ admin  → explicit `Deny kms:*` in the permission set (same result, different mechanism)
+#    ✗ s3     → kms: not in its set
+aws kms list-aliases --region ap-southeast-1 --query "Aliases[?starts_with(AliasName, 'alias/ith/')].AliasName"
 
-# Use any service outside the demo allow-list — account SCP [41] caps even full admin
-aws rds describe-db-instances --region ap-southeast-1   # AccessDenied (rds not in [41])
+# ── Sensitive bucket read directly, no VPC — the bucket VPC-lock [20] denies EVERYONE, even super
+#    ✗ super · ✗ admin · ✗ s3   (aws:sourceVpce gate — use P1/P2/P3 instead)
+aws s3api get-object --bucket phi-sensitive-118821711925 --key patients/088047ea-5cf6-2dfd-3b89-c0c8a1813de8.json /tmp/x.json --region ap-southeast-1
+aws s3 ls s3://phi-sensitive-118821711925/patients/ --region ap-southeast-1
+#    …the SAME read SUCCEEDS once you're inside the VPC (this is P2) — read runs as the k3s node role [31]:
+#    ✓ super · – admin (not demoed; admin reads via P3 web UI) · ✗ s3 (no ssm:)
+aws ssm start-session --target i-032177597ad315d32 --region ap-southeast-1                                   # 1) SSM onto the k3s node = get inside the VPC
+aws s3api get-object --bucket phi-sensitive-118821711925 --key patients/088047ea-5cf6-2dfd-3b89-c0c8a1813de8.json --endpoint-url https://bucket.vpce-000ca0be99fa5595c-dkt1diqi.s3.ap-southeast-1.vpce.amazonaws.com --region ap-southeast-1 /tmp/p.json && head -c 300 /tmp/p.json   # 2) through the interface endpoint → READ_OK
+
+# ── Any service outside the demo allow-list — account SCP [41] caps even full admin
+#    ✗ super (rds not in [41]; admin & s3 lack rds too)
+aws rds describe-db-instances --region ap-southeast-1
 ```
 
-### 2. `ith-admin` — scoped admin, **no KMS, no Lambda**
+> **Break-glass:** if KMS admin is genuinely needed, reach it from the **management account** via `OrganizationAccountAccessRole` — outside this permission set/boundary. The boundary [[42]](controls/42-permission-boundary.md) caps the *SSO role*, not every path into the account.
 
-**CAN do**
-
-```bash
-# P3 — same human read path (SSM → EC2 web app), then open http://localhost:8080
-aws ssm start-session --target i-004a73751e979b264 --document-name AWS-StartPortForwardingSession --parameters "portNumber=8080,localPortNumber=8080" --region ap-southeast-1
-
-# Detection — read the alarms / trail / GuardDuty
-aws cloudwatch describe-alarms --alarm-name-prefix ith- --query "MetricAlarms[].[AlarmName,StateValue]" --output text --region ap-southeast-1
-```
-
-**CAN'T do**
-
-```bash
-# Touch KMS at all — explicit Deny kms:* in the permission set
-aws kms list-keys --region ap-southeast-1   # AccessDenied (explicit deny)
-
-# Invoke the redactor Lambda — 'lambda' is not in this permission set
-aws lambda invoke --function-name ith-redactor --payload '{}' --cli-binary-format raw-in-base64-out --region ap-southeast-1 out.json   # AccessDenied
-
-# Read the sensitive bucket directly — VPC-lock, like everyone
-aws s3 ls s3://phi-sensitive-118821711925/patients/ --region ap-southeast-1   # AccessDenied
-```
-
-### 3. `ith-s3` — the `s3` user, S3 read **only inside the VPC** (P4)
-
-This identity exists to prove the VPC gate: from a laptop/CloudShell it can read **nothing**; the identical call succeeds only from inside the VPC (`aws:sourceVpce` = the gateway endpoint [13] — the in-VPC mechanism behind P2/P3).
-
-**CAN do**
-
-```bash
-# Confirm who you are (about the only call that works from outside the VPC)
-aws sts get-caller-identity
-```
-
-**CAN'T do — all by design**
-
-```bash
-# P4 — direct read from outside the VPC is blocked by the bucket VPC-lock
-aws s3api get-object --bucket phi-sensitive-118821711925 --key patients/088047ea-5cf6-2dfd-3b89-c0c8a1813de8.json /tmp/x.json --region ap-southeast-1   # AccessDenied (aws:sourceVpce gate)
-aws s3 ls s3://phi-sensitive-118821711925/patients/ --region ap-southeast-1                                                                          # AccessDenied
-
-# Reach a box to get inside the VPC — no SSM in this permission set
-aws ssm start-session --target i-004a73751e979b264 --region ap-southeast-1   # AccessDenied
-```
-
-> **What this tests:** every denied call above writes an `AccessDenied` to CloudTrail and trips the **`ith-s3-access-denied`** alarm [35]. Sign back in as `ith-admin` / `ith-superadmin` and re-run the `describe-alarms` command to watch it flip to `ALARM`.
+> **Watch a control fire:** every `AccessDenied` above is logged to CloudTrail. Run any denied call as `ith-s3`, then sign back in as `ith-admin` / `ith-superadmin` and re-run the `describe-alarms` command — the `ith-s3-access-denied` alarm [[35]](controls/35-alarms.md) flips to `ALARM`.
 
 ---
 
@@ -186,7 +179,7 @@ aws ssm start-session --target i-004a73751e979b264 --region ap-southeast-1   # A
 | Where | What |
 |---|---|
 | [`controls/`](controls/README.md) | consolidated controls + one page per component ID |
-| [`controls/OutOfScopeNotes.md`](controls/OutOfScopeNotes.md) | Synthea, hardware-MFA (+ CA API JSON), centralize-root-access, tradeoffs |
+| [`controls/OutOfScopeNotes.md`](controls/OutOfScopeNotes.md) | Synthea, hardware-MFA (+ CA API JSON & how-to-verify), root protection (root-usage alert · centralize root access · multi-party approval), super-admin-only S3 (Config vs SCP), behavior/risk-based sign-in, tradeoffs |
 
 ---
 *Synthetic data only (Synthea) — no real PHI. Isolated; destroyed after verdict.*

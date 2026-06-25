@@ -42,13 +42,18 @@ spec:
               echo "encrypt -> ${ENC}"
               echo "$ENC" | grep -q '"ok": true' || { echo "ENCRYPT_FAILED"; exit 1; }
               printf '%s' "$ENC" > /tmp/blob.json
-              aws s3api put-object --bucket "${BUCKET}" --key "${KEY}" --body /tmp/blob.json ${EP} >/dev/null
+              # Org SCP requires SSE-KMS on PHI puts. The blob is ALREADY client-side
+              # encrypted by the enclave; SSE here is the bucket-default KMS key (NOT the
+              # enclave key — that key forbids non-attested GenerateDataKey, which is what
+              # S3 SSE would do). So: defense-in-depth at rest + satisfies the guardrail.
+              aws s3api put-object --bucket "${BUCKET}" --key "${KEY}" --body /tmp/blob.json \
+                --server-side-encryption aws:kms ${EP} >/dev/null
               echo "WROTE s3://${BUCKET}/${KEY}"
 
               # ---- READ: S3 ciphertext -> enclave decrypt -> plaintext
               aws s3api get-object --bucket "${BUCKET}" --key "${KEY}" ${EP} /tmp/back.json >/dev/null
               DEC=$(curl -s -X POST "${BROKER}/decrypt" -H 'content-type: application/json' --data @/tmp/back.json)
               echo "decrypt -> ${DEC}"
-              PT_OUT=$(printf '%s' "$DEC" | sed -n 's/.*"plaintext_b64":"\([^"]*\)".*/\1/p' | base64 -d || true)
+              PT_OUT=$(printf '%s' "$DEC" | sed -n 's/.*"plaintext_b64": *"\([^"]*\)".*/\1/p' | base64 -d || true)
               echo "READ_OK ${PT_OUT}"
               test "${PT_OUT}" = "${PT}" && echo "ROUNDTRIP_MATCH=yes" || { echo "ROUNDTRIP_MATCH=no"; exit 1; }

@@ -27,11 +27,11 @@ resource "azuread_group" "admins" {
 }
 
 resource "azuread_user" "u" {
-  for_each            = local.entra_users
-  user_principal_name = "${each.value.upn}@${var.tenant_domain}"
-  display_name        = each.value.display
-  mail_nickname       = each.value.upn
-  password            = "ChangeMe-${each.key}-${substr(var.tenant_id, 0, 8)}!" # forced reset on first sign-in
+  for_each              = local.entra_users
+  user_principal_name   = "${each.value.upn}@${var.tenant_domain}"
+  display_name          = each.value.display
+  mail_nickname         = each.value.upn
+  password              = "ChangeMe-${each.key}-${substr(var.tenant_id, 0, 8)}!" # forced reset on first sign-in
   force_password_change = true
 }
 

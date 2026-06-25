@@ -144,33 +144,37 @@ resource "aws_kms_alias" "logs" {
 # explains why prod would also bind the instance (PCR4) and scope workloads per-instance.
 # =====================================================================================
 locals {
-  enclave_key_statements = concat(
-    [
-      {
-        Sid       = "RootAccountAdmin"
-        Effect    = "Allow"
-        Principal = { AWS = local.root_arn }
-        Action    = "kms:*"
-        Resource  = "*"
-      }
-    ],
-    # Phase A (enclave_pcr0 == "") -> no data-plane grant at all: the key exists but is
-    # unusable until phase B locks it to the real, measured PCR0.
-    var.enclave_pcr0 == "" ? [] : [
-      {
-        Sid       = "AllowAttestedEnclaveOnly"
-        Effect    = "Allow"
-        Principal = { AWS = aws_iam_role.onprem_k8s.arn }
-        Action    = ["kms:Decrypt", "kms:GenerateDataKey*"]
-        Resource  = "*"
-        Condition = {
-          StringEqualsIgnoreCase = {
-            "kms:RecipientAttestation:PCR0" = var.enclave_pcr0
-          }
+  enclave_key_statements = [
+    # Root admin enables IAM-based management of the key. NOTE: this also means an IAM
+    # allow (the node role has kms:GenerateDataKey/Decrypt) would normally suffice to USE
+    # the key — which is exactly why the gate below is an explicit DENY, not just the
+    # absence of an allow. An explicit deny overrides every allow (IAM or key policy).
+    {
+      Sid       = "RootAccountAdmin"
+      Effect    = "Allow"
+      Principal = { AWS = local.root_arn }
+      Action    = "kms:*"
+      Resource  = "*"
+    },
+    # THE GATE: deny the two data-plane ops unless the request carries a Nitro attestation
+    # document whose PCR0 equals var.enclave_pcr0. "...IfExists" makes a request with NO
+    # attestation (any normal, non-enclave caller — including the node role itself, or even
+    # root) also match the deny. So the ONLY way to Decrypt/GenerateDataKey with this key is
+    # from inside the measured enclave. Phase A (enclave_pcr0 == "") denies everyone, since
+    # no real attestation can equal "" -> key is inert until phase B locks the true PCR0.
+    {
+      Sid       = "DenyDataKeyOpsUnlessAttestedPCR0"
+      Effect    = "Deny"
+      Principal = "*"
+      Action    = ["kms:Decrypt", "kms:GenerateDataKey*"]
+      Resource  = "*"
+      Condition = {
+        StringNotEqualsIfExists = {
+          "kms:RecipientAttestation:PCR0" = var.enclave_pcr0
         }
       }
-    ]
-  )
+    }
+  ]
 }
 
 resource "aws_kms_key" "enclave" {

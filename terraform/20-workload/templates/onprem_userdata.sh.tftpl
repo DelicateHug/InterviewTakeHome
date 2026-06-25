@@ -1,17 +1,15 @@
 #!/bin/bash
 # ITH on-prem k8s node — thin bootstrap (P2 read + P5 attested enclave read/write).
-# Real work is in setup-node.sh (plain bash, shipped base64 below) so this template only
+# Real work is in setup-node.sh (plain bash, inside the shipped zip) so this template only
 # carries Terraform-interpolated VALUES, never bash brace-vars that templatefile mangles.
 set -xe
 export HOME=/root
 mkdir -p /opt/ith-enclave
 
-echo "${dockerfile_b64}"     | base64 -d > /opt/ith-enclave/Dockerfile
-echo "${enclave_server_b64}" | base64 -d > /opt/ith-enclave/enclave_server.py
-echo "${host_broker_b64}"    | base64 -d > /opt/ith-enclave/host_broker.py
-echo "${build_enclave_b64}"  | base64 -d > /opt/ith-enclave/build-enclave.sh
-echo "${setup_node_b64}"     | base64 -d > /opt/ith-enclave/setup-node.sh
-echo "${pod_manifest_b64}"   | base64 -d > /opt/ith-enclave/phi-rw-enclave.yaml
+# Unpack the deflate-compressed asset bundle with python3 (always present on AL2023;
+# avoids depending on `unzip` before packages are installed).
+echo "${assets_zip_b64}" | base64 -d > /tmp/enclave-assets.zip
+python3 -c "import zipfile; zipfile.ZipFile('/tmp/enclave-assets.zip').extractall('/opt/ith-enclave')"
 chmod +x /opt/ith-enclave/*.sh
 
 # REGION BUCKET S3_ENDPOINT KEY_ALIAS PCR0_PARAM SAMPLE_KEY ACCOUNT_ID

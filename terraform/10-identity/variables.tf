@@ -40,8 +40,8 @@ variable "aws_app_id" {
     scope the Conditional Access policy. Only needed when enable_entra_changes = true.
     Find it: az ad sp list --display-name "AWS" --query "[].id".
   EOT
-  type    = string
-  default = "00000000-0000-0000-0000-000000000000"
+  type        = string
+  default     = "00000000-0000-0000-0000-000000000000"
 }
 
 variable "login_url" {

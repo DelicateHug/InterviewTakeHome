@@ -12,6 +12,38 @@
 # c6i.xlarge + enclave_options because Nitro Enclaves are NOT supported on t3.
 # =====================================================================================
 
+# P5 app assets are bundled into one deflate-compressed zip and shipped in user_data
+# (the raw files exceed the 16KB user_data limit). The node extracts it with python3.
+data "archive_file" "enclave_assets" {
+  type        = "zip"
+  output_path = "${path.module}/builds/enclave-assets.zip"
+
+  source {
+    content  = file("${path.module}/../../app/enclave/Dockerfile")
+    filename = "Dockerfile"
+  }
+  source {
+    content  = file("${path.module}/../../app/enclave/enclave_server.py")
+    filename = "enclave_server.py"
+  }
+  source {
+    content  = file("${path.module}/../../app/enclave/host_broker.py")
+    filename = "host_broker.py"
+  }
+  source {
+    content  = file("${path.module}/../../app/enclave/build-enclave.sh")
+    filename = "build-enclave.sh"
+  }
+  source {
+    content  = file("${path.module}/../../app/enclave/setup-node.sh")
+    filename = "setup-node.sh"
+  }
+  source {
+    content  = file("${path.module}/../../app/onprem/phi-rw-enclave.yaml")
+    filename = "phi-rw-enclave.yaml"
+  }
+}
+
 resource "aws_instance" "onprem" {
   ami                         = data.aws_ami.al2023.id
   instance_type               = var.enclave_instance_type
@@ -49,14 +81,8 @@ resource "aws_instance" "onprem" {
     account_id        = local.account_id
     enclave_key_alias = aws_kms_alias.enclave.name
     pcr0_param        = local.enclave_pcr0_param
-    # App assets are shipped inline (base64) and unpacked on the node, mirroring the
-    # webapp pattern. The node builds the EIF from these, captures PCR0, and runs it.
-    dockerfile_b64     = base64encode(file("${path.module}/../../app/enclave/Dockerfile"))
-    enclave_server_b64 = base64encode(file("${path.module}/../../app/enclave/enclave_server.py"))
-    host_broker_b64    = base64encode(file("${path.module}/../../app/enclave/host_broker.py"))
-    build_enclave_b64  = base64encode(file("${path.module}/../../app/enclave/build-enclave.sh"))
-    setup_node_b64     = base64encode(file("${path.module}/../../app/enclave/setup-node.sh"))
-    pod_manifest_b64   = base64encode(file("${path.module}/../../app/onprem/phi-rw-enclave.yaml"))
+    # All app assets as one deflate-compressed zip (extracted on the node with python3).
+    assets_zip_b64 = filebase64(data.archive_file.enclave_assets.output_path)
   }))
   user_data_replace_on_change = true # re-provision k3s + enclave when the boot script changes
 

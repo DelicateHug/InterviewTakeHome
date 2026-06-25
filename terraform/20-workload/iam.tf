@@ -210,3 +210,40 @@ resource "aws_iam_instance_profile" "onprem_k8s" {
   name = "ith-onprem-k8s-profile"
   role = aws_iam_role.onprem_k8s.name
 }
+
+# =====================================================================================
+# [42] ITH-SuperAdmin PERMISSIONS BOUNDARY (customer-managed; lives in the MEMBER account)
+#
+# A permissions boundary sets the *maximum* permissions an identity can ever have:
+#   effective = (identity policy)  ∩  (permissions boundary)  − (any explicit Deny)
+#
+# Here the boundary ALLOWS everything EXCEPT kms:* via NotAction — deliberately with NO
+# Deny statement. So even though the SSO role gets AdministratorAccess (Allow *), KMS is
+# blocked because it sits OUTSIDE the boundary's allowed set (the intersection excludes it).
+# That ceiling-by-intersection is the property unique to a permissions boundary, and is
+# what distinguishes this from the two other KMS blocks in the project:
+#   - ITH-Admin   : inline `Deny kms:*`  (explicit deny in the identity policy)        [03]
+#   - SCP [41]    : org-level allow-list guardrail on the whole account
+#   - boundary    : caps the MAX of one principal — blocks KMS with no Deny at all     [42]
+#
+# IAM Identity Center references this boundary BY NAME, so the policy must exist in every
+# account the ITH-SuperAdmin permission set is provisioned to (this member account). The
+# boundary ATTACHMENT to the permission set is in 10-identity/permission-sets.tf.
+# =====================================================================================
+data "aws_iam_policy_document" "superadmin_boundary" {
+  statement {
+    sid    = "BoundaryCeilingEverythingExceptKms"
+    effect = "Allow"
+    # NotAction => the boundary's allowed set is "all actions except kms:*". KMS is never
+    # inside the ceiling, so AdministratorAccess (Allow *) ∩ boundary cannot reach it.
+    not_actions = ["kms:*"]
+    resources   = ["*"]
+  }
+}
+
+resource "aws_iam_policy" "superadmin_boundary" {
+  name        = "ITH-SuperAdmin-Boundary"
+  path        = "/"
+  description = "Permissions boundary for ITH-SuperAdmin: caps the SSO role's MAX permissions to everything-except-kms:* (NotAction ceiling, no Deny). KMS is blocked by falling outside the boundary, not by an explicit deny. Distinct from the org SCP [41] and ITH-Admin's inline Deny kms:*."
+  policy      = data.aws_iam_policy_document.superadmin_boundary.json
+}

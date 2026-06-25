@@ -137,3 +137,57 @@ resource "aws_organizations_policy_attachment" "scp_allowlist_to_account" {
   policy_id = aws_organizations_policy.scp_account_allowlist.id
   target_id = aws_organizations_account.workload.id
 }
+
+# ---- [60] Protect the detection stack : deny tampering with the monitors -------------
+# "Who watches the watchers." Detection you can silently delete is not detection. Even
+# SuperAdmin must not be able to delete an alarm, drop a metric filter, mute the SNS topic,
+# disable an EventBridge rule, stop CloudTrail, or kill GuardDuty. This Deny caps EVERY
+# principal in the account except var.detection_admin_principal_arns (the IaC deploy role) on
+# the detection-stack-mutating actions. Deny wins over the allow-list SCP [41], so it holds even
+# though [41] grants cloudwatch:* / logs:* / sns:* / events:* / guardduty:* / cloudtrail:*.
+#
+# Pairs with the detection-tampering alarm [60] in 20-workload: SCP PREVENTS, alarm DETECTS if a
+# break-glass actor (mgmt account via OrganizationAccountAccessRole) ever bypasses it.
+#
+# Why no resource tag: in THIS single-purpose account the ONLY cloudwatch/logs/sns/events/
+# guardduty/cloudtrail resources ARE the detection stack, so a blanket action deny is exact. In a
+# SHARED account you would instead gate these actions on aws:ResourceTag/<protect>=detection AND
+# also deny <svc>:TagResource/UntagResource of that key (else an attacker untags the resource
+# first, then mutates it - the tag is only as strong as your ability to keep it on).
+resource "aws_organizations_policy" "scp_protect_detection" {
+  name        = "ith-scp-protect-detection"
+  description = "Deny tampering with the detection stack (alarms/filters/SNS/EventBridge/GuardDuty/CloudTrail) by anyone but the deploy role."
+  type        = "SERVICE_CONTROL_POLICY"
+
+  content = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "ProtectDetectionStack"
+        Effect = "Deny"
+        Action = [
+          "cloudwatch:DeleteAlarms", "cloudwatch:PutMetricAlarm",
+          "cloudwatch:DisableAlarmActions", "cloudwatch:SetAlarmState",
+          "logs:DeleteMetricFilter", "logs:PutMetricFilter", "logs:DeleteLogGroup",
+          "logs:DeleteSubscriptionFilter", "logs:PutRetentionPolicy",
+          "sns:DeleteTopic", "sns:SetTopicAttributes", "sns:AddPermission", "sns:RemovePermission",
+          "events:DeleteRule", "events:DisableRule", "events:PutRule", "events:RemoveTargets",
+          "lambda:DeleteFunction", "lambda:UpdateFunctionCode", "lambda:UpdateFunctionConfiguration",
+          "guardduty:DeleteDetector", "guardduty:UpdateDetector", "guardduty:StopMonitoringMembers",
+          "cloudtrail:StopLogging", "cloudtrail:DeleteTrail", "cloudtrail:UpdateTrail", "cloudtrail:PutEventSelectors"
+        ]
+        Resource = "*"
+        Condition = {
+          ArnNotLike = { "aws:PrincipalArn" = var.detection_admin_principal_arns }
+        }
+      }
+    ]
+  })
+
+  tags = local.tags
+}
+
+resource "aws_organizations_policy_attachment" "scp_protect_detection_to_account" {
+  policy_id = aws_organizations_policy.scp_protect_detection.id
+  target_id = aws_organizations_account.workload.id
+}

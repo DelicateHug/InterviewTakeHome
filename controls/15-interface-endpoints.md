@@ -6,14 +6,16 @@
 
 ## Controls applied
 
-- **Prevention:** ssm, ssmmessages, ec2messages, sts, kms, logs — keep the VPC internet-free; SG-restricted to 443 from the app / on-prem SGs.
+- **Prevention:**
+  - ssm, ssmmessages, ec2messages, sts, kms, logs — keep the VPC internet-free
+  - SG-restricted to 443 from the app / on-prem SGs.
 - **Detection:** CloudTrail.
-- **Alert:** Endpoint / policy change → change-alerter [40].
+- **Alert:** Endpoint / policy change → change-alerter [[40]](40-change-alerter.md).
 
 ## What would trigger an alert
 
-- An endpoint or its endpoint policy is changed → change-alerter [40] → SNS [36].
-- The endpoints SG [16] that fronts them is modified → sg-change alarm [35] + change-alerter [40].
+- An endpoint or its endpoint policy is changed → change-alerter [[40]](40-change-alerter.md) → SNS [[36]](36-sns.md).
+- The endpoints SG [[16]](16-endpoints-sg.md) that fronts them is modified → sg-change alarm [[35]](35-alarms.md) + change-alerter [[40]](40-change-alerter.md).
 
 ---
 [< controls index](README.md) | [< home](../README.md)

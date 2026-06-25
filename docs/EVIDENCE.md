@@ -24,6 +24,10 @@ verified with real calls — not mock-ups.
 - 3 permission sets created: `ITH-SuperAdmin` (`ps-5d0bf2b3199ca111`), `ITH-Admin`
   (`ps-e43309226b317833`, denies `kms:*`), `ITH-S3Reader` (`ps-50b047f6d2e54fbe`,
   VPC-only). `entra_enabled = false` (Entra/CA written but not applied — guardrail).
+- **[42] Permissions boundary on `ITH-SuperAdmin`** (customer-managed policy
+  `ITH-SuperAdmin-Boundary` in the member account; `NotAction kms:*` ceiling, no Deny).
+  Caps SuperAdmin's MAX to all-except-KMS by intersection, so `aws kms list-aliases` as
+  SuperAdmin returns `AccessDenied` — distinct from `ITH-Admin`'s explicit `Deny kms:*`.
 
 ## KMS + data (R14/R15/R18)
 
@@ -55,7 +59,7 @@ reads are blocked; the only human read path is the in-VPC EC2 web app.
 | CloudTrail | `get-trail-status ith-trail` → `IsLogging = True` (multi-region, log-file validation, KMS, S3 data events) |
 | GuardDuty | detector `Status = ENABLED` |
 | Alarms (9) | `describe-alarms` shows all 9; **3 already in `ALARM`** from real activity: `ith-s3-access-denied`, `ith-s3-policy-change`, `ith-unauthorized-api` |
-| R12 IP-alerter | `lambda invoke ith-ip-alerter` with an external source IP → `{"alerted":"203.0.113.66","event":"AssumeRole"}` (publishes to SNS) |
+| R12 role-credential alerting (GuardDuty) | Satisfied by GuardDuty, not a custom Lambda. The detector is `ENABLED` (row above) and the sev≥4 EventBridge rule routes findings to SNS. The two relevant findings are `UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS` (EC2 role creds used from an IP outside AWS) and `.InsideAWS` (used from another AWS account). Exercise the path on demand with `aws guardduty create-sample-findings --detector-id <id> --finding-types UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS` → finding fires → EventBridge → SNS email. |
 | SNS | topic `ith-security-alerts` (KMS-encrypted); email `dylanheathsmart@gmail.com` is **`PendingConfirmation`** — click the confirmation email to receive alerts |
 
 ## How to reproduce the checks

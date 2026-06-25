@@ -41,9 +41,19 @@ aws-creds*
 azure-creds*
 credentials.json
 
+# ---- Python ----
+__pycache__/
+*.py[cod]
+
 # ---- OS / editor ----
 .DS_Store
 Thumbs.db
 *.swp
 .idea/
 .vscode/
+
+# P5 enclave asset bundle (build artifact)
+terraform/20-workload/builds/
+
+# env-specific locked PCR0 (per-build)
+terraform/20-workload/terraform.tfvars

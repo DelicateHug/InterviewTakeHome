@@ -6,14 +6,14 @@
 
 ## Controls applied
 
-- **Prevention:** Denies **all** actions except the services this demo needs (s3, kms, ec2, lambda, ssm + messages, sts, iam, cloudtrail, guardduty, cloudwatch, logs, sns, events, tag). Attached to the account [09]; caps even SuperAdmin.
+- **Prevention:** Denies **all** actions except the services this demo needs (s3, kms, ec2, lambda, ssm + messages, sts, iam, cloudtrail, guardduty, cloudwatch, logs, sns, events, tag). Attached to the account [[09]](09-member-account.md); caps even SuperAdmin.
 - **Detection:** Org CloudTrail on policy changes.
-- **Alert:** Policy change → change-alerter [40].
+- **Alert:** Policy change → change-alerter [[40]](40-change-alerter.md).
 
 ## What would trigger an alert
 
-- Any user — even SuperAdmin — calls a service outside the allow-list → denied → unauthorized-api alarm [35] → SNS [36].
-- The SCP is edited or detached (an attempt to lift the ceiling) → change-alerter [40].
+- Any user — even SuperAdmin — calls a service outside the allow-list → denied → unauthorized-api alarm [[35]](35-alarms.md) → SNS [[36]](36-sns.md).
+- The SCP is edited or detached (an attempt to lift the ceiling) → change-alerter [[40]](40-change-alerter.md).
 
 ---
 [< controls index](README.md) | [< home](../README.md)

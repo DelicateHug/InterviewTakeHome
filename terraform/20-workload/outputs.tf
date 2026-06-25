@@ -37,6 +37,11 @@ output "s3_gateway_vpce_id" {
   value = aws_vpc_endpoint.s3_gw.id
 }
 
+output "superadmin_boundary_policy_name" {
+  description = "[42] Customer-managed permissions boundary capping ITH-SuperAdmin to everything-except-kms:*. The SSO boundary attachment in 10-identity references this by name."
+  value       = aws_iam_policy.superadmin_boundary.name
+}
+
 output "s3_interface_vpce_dns" {
   value = aws_vpc_endpoint.s3_interface.dns_entry[0].dns_name
 }

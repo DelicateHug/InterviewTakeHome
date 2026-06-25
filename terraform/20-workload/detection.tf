@@ -1,6 +1,18 @@
 # =====================================================================================
-# Detect & Respond — CloudTrail (R11), GuardDuty (R11), SNS + CloudWatch alarms (R4),
-# and the EventBridge -> Lambda AssumeRole IP alerter (R12).
+# Detect & Respond — CloudTrail (R11), GuardDuty (R11 + R12), SNS + CloudWatch alarms (R4).
+#
+# R12 ("role assumptions -> IP-based alerting") is satisfied by GuardDuty, NOT a bespoke
+# Lambda. GuardDuty's managed findings already detect EC2 instance-role credentials being
+# used away from the instance they were issued to:
+#   * UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS
+#       - IMDS-delivered role creds used from an IP OUTSIDE AWS (the source-IP case).
+#   * UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.InsideAWS
+#       - the same creds replayed from a DIFFERENT AWS account (which a naive allow-list of
+#         AWS IP ranges would miss).
+# Both are severity >= 4, so the GuardDuty -> EventBridge -> SNS rule at the bottom of this
+# file already delivers them. We removed the hand-rolled EventBridge-on-AssumeRole + Lambda
+# ("ith-ip-alerter") because it duplicated this managed coverage while adding an allow-list
+# to maintain and a per-call Lambda to run. See controls/37-guardduty.md.
 # =====================================================================================
 
 # ---- SNS (all alerts land here) -----------------------------------------------------
@@ -86,7 +98,16 @@ resource "aws_cloudtrail" "main" {
   cloud_watch_logs_group_arn    = "${aws_cloudwatch_log_group.trail.arn}:*"
   cloud_watch_logs_role_arn     = aws_iam_role.ct_to_logs.arn
 
-  # management events + S3 object-level (data) events on both buckets
+  # Management events + S3 object-level (DATA) events on both buckets.
+  #
+  # Why data events matter (do NOT drop these to save cost):
+  #   * A GetObject/PutObject 403 is a *data* event, not a management event. Without this
+  #     selector, object-level reads and denials on the PHI bucket are not logged at all.
+  #   * The `s3-access-denied` metric filter + alarm below silently DEPENDS on this. Remove
+  #     data events and that alarm goes permanently blind: it never fires and looks healthy.
+  #   * For PHI this is a HIPAA audit-trail requirement (45 CFR 164.312(b)), not optional.
+  #   * Data events are OFF by default and billed per 100K events - scoped to these two
+  #     bucket ARNs (not s3:::*) to keep cost bounded.
   event_selector {
     read_write_type           = "All"
     include_management_events = true
@@ -141,6 +162,11 @@ locals {
       description = "Security group changes"
     }
     s3-access-denied = {
+      # Only sees GetObject/PutObject denials because S3 DATA events are enabled in the
+      # CloudTrail event_selector above. Disable data events and this alarm goes blind.
+      # The alarm is count-only (dimensionless) - to learn who/what/how, query the
+      # /ith/cloudtrail log group for the alarm window (userIdentity.arn, sourceIPAddress,
+      # requestParameters.key).
       pattern     = "{ ($.eventSource = \"s3.amazonaws.com\") && ($.errorCode = \"AccessDenied\") }"
       description = "S3 AccessDenied (blocked read attempt on PHI)"
     }
@@ -164,7 +190,7 @@ resource "aws_cloudwatch_log_metric_filter" "f" {
 resource "aws_cloudwatch_metric_alarm" "a" {
   for_each            = local.metric_filters
   alarm_name          = "ith-${each.key}"
-  alarm_description    = each.value.description
+  alarm_description   = each.value.description
   namespace           = "ITH/Security"
   metric_name         = "ith-${each.key}"
   statistic           = "Sum"
@@ -177,87 +203,11 @@ resource "aws_cloudwatch_metric_alarm" "a" {
   ok_actions          = [aws_sns_topic.alerts.arn]
 }
 
-# ---- R12: AssumeRole IP alerter (EventBridge -> Lambda -> SNS) -----------------------
-data "archive_file" "ip_alerter" {
-  type        = "zip"
-  source_file = "${path.module}/../../app/lambda-ip-alerter/index.py"
-  output_path = "${path.module}/build/ip-alerter.zip"
-}
-
-data "aws_iam_policy_document" "ip_alerter_trust" {
-  statement {
-    actions = ["sts:AssumeRole"]
-    principals {
-      type        = "Service"
-      identifiers = ["lambda.amazonaws.com"]
-    }
-  }
-}
-
-resource "aws_iam_role" "ip_alerter" {
-  name               = "ith-ip-alerter-role"
-  assume_role_policy = data.aws_iam_policy_document.ip_alerter_trust.json
-}
-
-resource "aws_iam_role_policy_attachment" "ip_alerter_basic" {
-  role       = aws_iam_role.ip_alerter.name
-  policy_arn = "arn:${data.aws_partition.current.partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-}
-
-resource "aws_iam_role_policy" "ip_alerter" {
-  name = "ith-ip-alerter-inline"
-  role = aws_iam_role.ip_alerter.id
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      { Effect = "Allow", Action = ["sns:Publish"], Resource = aws_sns_topic.alerts.arn },
-      { Effect = "Allow", Action = ["kms:GenerateDataKey*", "kms:Decrypt"], Resource = aws_kms_key.logs.arn }
-    ]
-  })
-}
-
-resource "aws_lambda_function" "ip_alerter" {
-  function_name    = "ith-ip-alerter"
-  role             = aws_iam_role.ip_alerter.arn
-  runtime          = "python3.12"
-  handler          = "index.handler"
-  filename         = data.archive_file.ip_alerter.output_path
-  source_code_hash = data.archive_file.ip_alerter.output_base64sha256
-  timeout          = 15
-
-  environment {
-    variables = {
-      SNS_TOPIC     = aws_sns_topic.alerts.arn
-      ALLOWED_CIDRS = join(",", var.allowed_assume_role_cidrs)
-    }
-  }
-}
-
-resource "aws_cloudwatch_event_rule" "assume_role" {
-  name        = "ith-assume-role-ip"
-  description = "Fire on sts:AssumeRole* for IP-based alerting"
-  event_pattern = jsonencode({
-    source        = ["aws.sts"]
-    "detail-type" = ["AWS API Call via CloudTrail"]
-    detail = {
-      eventName = ["AssumeRole", "AssumeRoleWithSAML", "AssumeRoleWithWebIdentity"]
-    }
-  })
-}
-
-resource "aws_cloudwatch_event_target" "assume_role" {
-  rule      = aws_cloudwatch_event_rule.assume_role.name
-  target_id = "ip-alerter"
-  arn       = aws_lambda_function.ip_alerter.arn
-}
-
-resource "aws_lambda_permission" "assume_role_events" {
-  statement_id  = "AllowEventBridgeAssumeRole"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.ip_alerter.function_name
-  principal     = "events.amazonaws.com"
-  source_arn    = aws_cloudwatch_event_rule.assume_role.arn
-}
+# ---- R12: role-credential IP alerting is handled by GuardDuty (see header) -----------
+# Intentionally NO custom EventBridge-on-AssumeRole rule / Lambda here. The
+# InstanceCredentialExfiltration.OutsideAWS / .InsideAWS findings emitted by the GuardDuty
+# detector below cover "EC2 role creds used off the instance" (by source IP and by account)
+# and already flow to SNS via the sev>=4 GuardDuty rule. Documented in controls/37-guardduty.md.
 
 # ---- [40] Change / CreateUser alerter : exclusion-based metric filters ---------------
 # Alert on (a) IAM user creation and (b) ANY mutating action against this system's
@@ -278,6 +228,29 @@ locals {
     for a in var.change_alert_excluded_arns : "&& ($.userIdentity.arn != \"*${a}*\")"
   ])
 
+  # [60] Detection self-protection — the detective half ("who watches the watchers").
+  # The protect-detection SCP [60] (00-org) PREVENTS anyone but the deploy role from mutating
+  # the detection stack; this metric filter DETECTS it if prevention is ever bypassed (e.g. a
+  # break-glass actor coming through the mgmt account's OrganizationAccountAccessRole). The
+  # exclusion here is deliberately NARROWER than change_excl_clause: only the IaC deploy role is
+  # exempt (it legitimately Put/Delete-s these on every apply). We do NOT exempt SuperAdmin —
+  # if anything but the pipeline touches the monitors we want to know, SCP block notwithstanding.
+  detect_excl_arns = ["OrganizationAccountAccessRole"]
+  detect_excl_clause = join(" ", [
+    for a in local.detect_excl_arns : "&& ($.userIdentity.arn != \"*${a}*\")"
+  ])
+  detect_event_names = [
+    "DeleteAlarms", "PutMetricAlarm", "DisableAlarmActions", "SetAlarmState", # CloudWatch alarms [35]
+    "DeleteMetricFilter", "PutMetricFilter", "DeleteLogGroup",                # Logs / metric filters [34]
+    "DeleteSubscriptionFilter", "PutRetentionPolicy",
+    "DeleteTopic", "SetTopicAttributes", "RemovePermission",     # SNS topic [36]
+    "DeleteRule", "DisableRule", "RemoveTargets",                # EventBridge rules (GuardDuty->SNS) [37]
+    "DeleteDetector", "UpdateDetector", "StopMonitoringMembers", # GuardDuty [37]
+  ]
+  detect_event_clause = join(" || ", [
+    for e in local.detect_event_names : "($.eventName = \"${e}\")"
+  ])
+
   change_filters = {
     unauthorized-create-user = {
       pattern     = "{ ($.eventName = \"CreateUser\") ${local.change_excl_clause} }"
@@ -286,6 +259,10 @@ locals {
     unauthorized-change = {
       pattern     = "{ ($.readOnly IS FALSE) && ($.userIdentity.invokedBy NOT EXISTS) && ($.userIdentity.type != \"AWSService\") ${local.change_excl_clause} }"
       description = "Mutating action on a system resource by a non-excluded principal (exclusion: super admin + deploy role)"
+    }
+    detection-tampering = {
+      pattern     = "{ (${local.detect_event_clause}) ${local.detect_excl_clause} }"
+      description = "Detection stack (alarms / metric filters / log group / SNS / EventBridge / GuardDuty) modified by a non-deploy principal - backstops the protect-detection SCP [60]"
     }
   }
 }

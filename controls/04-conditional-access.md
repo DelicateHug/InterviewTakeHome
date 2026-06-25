@@ -6,7 +6,9 @@
 
 ## Controls applied
 
-- **Prevention:** Requires auth strength = built-in **Phishing-resistant MFA** (`...0004`); the only accepted grant, so non-MFA / weak MFA is blocked. Written as IaC but **disabled** (guardrail).
+- **Prevention:**
+  - Requires auth strength = built-in **Phishing-resistant MFA** (`...0004`)
+  - the only accepted grant, so non-MFA / weak MFA is blocked. Written as IaC but **disabled** (guardrail).
 - **Detection:** Entra sign-in logs.
 - **Alert:** Entra Identity Protection (recommended).
 
