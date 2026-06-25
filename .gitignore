@@ -21,6 +21,10 @@ terraform.rc
 dist/
 build/
 
+# ---- Terraform working logs / saved plans ----
+*.log
+tfplan
+
 # ---- Synthea tooling (large jar, raw run output) ----
 .tools/
 data/synthea-raw/

@@ -26,8 +26,10 @@ resource "aws_instance" "onprem" {
   user_data_base64 = base64encode(templatefile("${path.module}/templates/onprem_userdata.sh.tftpl", {
     bucket      = aws_s3_bucket.sensitive.id
     region      = local.region
-    # dns_entry is a wildcard "*.vpce-...": strip "*." so aws cli virtual-hosts the bucket.
-    s3_vpce_dns = replace(aws_vpc_endpoint.s3_interface.dns_entry[0].dns_name, "*.", "")
+    # dns_entry is a wildcard "*.vpce-...". The S3 interface-endpoint TLS cert covers
+    # "bucket.vpce-..." (and "*.bucket.vpce-..."), so use the "bucket." infix form; aws
+    # cli then virtual-hosts to "<bucket>.bucket.vpce-..." which matches the cert.
+    s3_vpce_dns = replace(aws_vpc_endpoint.s3_interface.dns_entry[0].dns_name, "*.", "bucket.")
     sample_key  = local.first_patient_key
   }))
   user_data_replace_on_change = true # re-provision k3s when the boot script changes

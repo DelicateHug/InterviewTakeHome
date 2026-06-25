@@ -7,6 +7,12 @@ sensitive health data (ePHI)** — built around **Prevent → Detect → Respond
 
 > **Grading shortcut:** [`REQUIREMENTS.md`](REQUIREMENTS.md) is a line-by-line
 > traceability matrix — every requirement → how it's satisfied → status.
+>
+> **Status: DEPLOYED & VERIFIED** in isolated account `118821711925` (`ap-southeast-1`).
+> All four access paths, the org SCP/RCP, per-patient KMS, CloudTrail/GuardDuty, and the
+> alarms were verified with real calls — see [`docs/EVIDENCE.md`](docs/EVIDENCE.md). The
+> Entra Conditional Access + users are written as IaC but **left disabled** (no-breaking-
+> changes guardrail); confirm the SNS email subscription to receive alerts.
 
 ---
 
@@ -138,7 +144,8 @@ the AWS **90-day account-closure** window.
 | [`docs/encryption-and-tokenization.md`](docs/encryption-and-tokenization.md) | per-patient KMS + vaultless tokens |
 | [`docs/detection-and-response.md`](docs/detection-and-response.md) | CloudTrail/GuardDuty/alarms catalog |
 | [`docs/tradeoffs-and-out-of-scope.md`](docs/tradeoffs-and-out-of-scope.md) | cost vs compliance, peering, VPC endpoints, out-of-scope |
-| [`diagrams/`](diagrams/) | editable draw.io architecture diagrams |
+| [`docs/EVIDENCE.md`](docs/EVIDENCE.md) | **live deployment proof** — verified calls for all 4 paths + detection |
+| [`diagrams/`](diagrams/) | editable draw.io architecture diagrams (4 pages, `[NN]` controls index) |
 
 ---
 

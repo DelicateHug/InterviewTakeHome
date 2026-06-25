@@ -1,14 +1,22 @@
 # Requirements Traceability Matrix
 
 > Single source of truth for this take-home. Every requirement the interviewer gave
-> (and every clarification since) is listed here with: the literal ask, how this
-> build interprets it, **how it is satisfied**, and status. Read this top-to-bottom
-> to grade the submission against the brief.
+> (and every clarification since) is listed here with: the literal ask, how this build
+> interprets it, **how it is satisfied**, and status. Read top-to-bottom to grade.
 
 **Scenario:** Secure a sensitive resource (an **S3 bucket of ePHI / health data**) in
-the cloud — preventing, detecting, and responding to unauthorized access, and holding
+the cloud - preventing, detecting, and responding to unauthorized access, and holding
 up when something fails. Everything is **Infrastructure-as-Code (Terraform)** and
-**actually deployed** to isolated accounts, then torn down after verdict.
+**actually deployed** to an isolated account, then torn down after verdict.
+
+> **STATUS: DEPLOYED & VERIFIED** - all requirements are live in account `118821711925`
+> and verified with real calls; see [`docs/EVIDENCE.md`](docs/EVIDENCE.md). The only
+> items not applied are the **Entra Conditional Access + users** (R2/R3/R10 and the user
+> side of R13): written as Terraform but **left disabled** to honor the owner's
+> no-breaking-changes guardrail on the live tenant.
+
+Status legend: **DONE** = deployed & verified - **DOC-ONLY** = IaC written but
+intentionally not applied (guardrail) - **PARTIAL** = partly real, partly doc-only.
 
 ---
 
@@ -16,137 +24,121 @@ up when something fails. Everything is **Infrastructure-as-Code (Terraform)** an
 
 | Thing | Value |
 |---|---|
-| AWS Organization | `o-ncxqr8pp2c` (FeatureSet ALL) |
-| Management account | `337066574719` ("Managment", dylanheathsmart@gmail.com) |
-| Org root | `r-33e3` — **both SCP and RCP policy types ENABLED** |
-| Identity Center instance | `ssoins-46812a8af28769cf`, identity store `d-96677e53fe`, in mgmt acct |
-| Identity source | **External IdP = Entra ID**, users **SCIM-provisioned** (`scim.aws.com`) |
+| AWS Organization | `o-ncxqr8pp2c` (FeatureSet ALL), root `r-33e3` (SCP + RCP both enabled) |
+| Management account | `337066574719` (dylanheathsmart@gmail.com) |
+| New isolated OU | `InterviewTakeHome` = `ou-33e3-5p8xygxw` |
+| New member account | `ith-workload` = **`118821711925`** (dylanheathsmart+ith-workload@gmail.com) |
+| SCP / RCP | `p-kt4wutiz` (S3 guardrails) / `p-02p8l548gj` (deny S3 outside org) - on the OU only |
+| Identity Center | instance `ssoins-46812a8af28769cf`, store `d-96677e53fe`; Entra-fed via SCIM |
 | AWS access portal (login URL) | **https://d-96677e53fe.awsapps.com/start/** |
-| Entra tenant | `delicatehug.com` (`16a0c46e-e66c-4544-acb5-237c7d29e036`) |
-| Entra licensing | **AAD_PREMIUM (P1) present** → Conditional Access + auth strengths available |
-| New isolated OU (created) | `InterviewTakeHome` (under root) |
-| New member account (created) | `ith-workload` (dylanheathsmart+ith-workload@gmail.com) |
-| Region | `ap-southeast-1` (Singapore) |
+| Entra tenant | `delicatehug.com` (`16a0c46e-...`), AAD_PREMIUM (P1) present |
+| Region | `ap-southeast-1` |
 
-> **Isolation discipline:** SCP/RCP attach **only** to the new `InterviewTakeHome` OU.
-> Nothing touches the user's existing accounts (DSOAR-*, Cyber Champion) or their own identity.
+> **Isolation discipline:** SCP/RCP attach **only** to the new OU; nothing touches the
+> existing accounts (DSOAR-*, Cyber Champion) or the owner's identity.
 >
-> ### ⚠️ Non-breaking guardrail (owner instruction)
-> **No breaking changes to the live Entra tenant or AWS org.** Concretely:
-> - **AWS** — only **additive, isolated** resources are deployed for real: the new OU,
->   the new member account, workload resources in that account, and SCP/RCP attached
->   **only to the new OU**. CloudTrail/GuardDuty are **account-level** (not org-wide
->   delegated admin), so existing accounts are untouched.
-> - **Entra** — Conditional Access (phishing-resistant MFA, non-MFA block) and the 3
->   Entra users + SCIM provisioning are **written as IaC but NOT applied** (behind
->   `var.enable_entra_changes`, default `false`). They are **documented as suggested,
->   not enabled**, so the live `delicatehug.com` tenant and its 7 existing CA policies
->   are not changed. The **AWS Identity Center permission sets** *are* created for real
->   (inert until assigned); the **assignments** to the 3 users are documented-not-applied
->   because they depend on the (not-provisioned) Entra users.
+> ### Non-breaking guardrail (owner instruction)
+> - **AWS** - only additive, isolated resources are deployed: the new OU, the new member
+>   account, workload resources in it, and SCP/RCP on the new OU only. CloudTrail/GuardDuty
+>   are account-level (not org-wide), so existing accounts are untouched.
+> - **Entra** - Conditional Access (phishing-resistant MFA, non-MFA block) and the 3 Entra
+>   users are written as IaC but **NOT applied** (`var.enable_entra_changes=false`), so the
+>   live tenant and its 7 existing CA policies are not changed. The AWS Identity Center
+>   **permission sets ARE created for real** (inert until assigned); the user assignments are
+>   doc-only because they depend on the not-provisioned Entra users.
 
 ---
 
-## 1. Hard requirements (must-have)
+## 1. Hard requirements
 
-| # | Requirement (as given) | Interpretation & how satisfied | Status |
+| # | Requirement (as given) | How satisfied | Status |
 |---|---|---|---|
-| R1 | **S3 bucket with sensitive data** | Primary bucket `phi-sensitive-<acct-id>` holds ePHI objects (Synthea). SSE-KMS, BPA on, TLS-only, VPC-locked. | ⬜ |
-| R2 | **Phishing-resistant MFA** for admins via the **IdP** | Entra Conditional Access requires **authentication strength = Phishing-resistant MFA** (`00000000-0000-0000-0000-000000000004`, FIDO2/passkey/WHfB/CBA) for the interview-admins group on the AWS app. **IaC written; left disabled (`enable_entra_changes=false`) to avoid changing the live tenant — documented as suggested.** | 📝 doc-only |
-| R3 | **Non-MFA blocked** | Entra CA: block sign-in that does not satisfy the phishing-resistant strength (no fallback to password/SMS). Legacy auth already blocked tenant-wide. **IaC written; left disabled — documented as suggested.** | 📝 doc-only |
-| R4 | **Alerting** / "alarms for everything" | SNS topic + CloudWatch alarms: root usage, console-without-MFA, unauthorized API, IAM/policy changes, S3 policy changes, KMS disable/scheduled-deletion, CloudTrail tamper, GuardDuty high-sev findings, **AssumeRole from unexpected IP (R12)**, S3 4xx/AccessDenied spikes, SG changes. | ⬜ |
-| R5 | **Everything is IaC** | 100% Terraform: `00-org`, `10-identity`, `20-workload`. No console clicks for resources. | ⬜ |
-| R6 | **One management account + one OU + one account inside the OU** | Mgmt `337066574719` → OU `InterviewTakeHome` → member `ith-workload` (created by Terraform `aws_organizations_account`). | ⬜ |
-| R7 | **S3 inter-account naming suffix** | Bucket names suffixed with the **account ID** (globally-unique, account-traceable): `phi-sensitive-<acct>`, `phi-deident-<acct>`. | ⬜ |
-| R8 | **S3 must require an org-level SCP** | SCP on the OU **denies** `s3:*` unless requests meet org guardrails (deny non-KMS PutObject, deny disabling BPA/encryption, deny bucket deletion, require TLS). | ⬜ |
-| R9 | **RCP must stop S3 to outer organization** | Resource Control Policy on the OU **denies** S3 access unless `aws:PrincipalOrgID == o-ncxqr8pp2c` — blocks any principal outside this org (incl. confused-deputy / cross-account). | ⬜ |
-| R10 | **IdP requires phishing-resistant MFA for admins** | = R2 (Entra is the IdP; federation already exists, reused). **doc-only** (see guardrail). | 📝 doc-only |
-| R11 | **CloudTrail + GuardDuty enabled** | Org/account CloudTrail (multi-region, log-file validation, KMS-encrypted, → dedicated log bucket) + GuardDuty detector with all features. | ⬜ |
-| R12 | **Role assumptions must have IP-based alerting** | EventBridge rule on `AssumeRole`/`AssumeRoleWithSAML` → Lambda evaluates `sourceIPAddress` vs allow-list CIDRs → SNS alert on out-of-range. Backstopped by a CloudTrail metric-filter alarm. | ⬜ |
-| R13 | **3 users**, documented on README page 1 with login URL | `super-admin` (all), `admin` (scoped services, **no KMS**), `s3` (read S3 **only when inside a VPC**). **Identity Center permission sets created for real**; Entra users + assignments **doc-only** (guardrail). Login URL on README p.1. | 🟡 perm-sets real / users doc-only |
-| R14 | **Example health data**, Synthea, **≥5 patient records** | Synthea generates ≥5 synthetic patients (FHIR/CSV). Sensitive fields **vaultless-tokenized** before upload. | ⬜ |
-| R15 | **S3 must use KMS, "per person"** → **per-patient CMK** | One **customer-managed KMS key per patient**; object encrypted under its patient's CMK; S3 default encryption + bucket-key. **Cost-vs-compliance tradeoff documented** (see §4). | ⬜ |
-| R16 | **4 paths to the bucket** | See §2. Lambda (Object Lambda redactor), on-prem K8s (VPC peering), EC2 web app (instance role, SSM-only), and the `s3` principal direct-read gated on `aws:sourceVpce`. | ⬜ |
-| R17 | **Security group as allow + port** | All data-plane SGs use **SG-as-source** rules (ingress `source_security_group_id`, not CIDR) on specific ports — e.g. web-app SG ← ALB/SSM, endpoint SG ← app SG:443. | ⬜ |
-| R18 | **Vaultless tokenization** of the S3 data | Deterministic, **key-epoch-tagged** tokens (no token vault). DEK per epoch from KMS; old epochs retained for decrypt; rotate-forward without mass re-tokenization. | ⬜ |
-| R19 | **Diagrams + readable documentation** (utmost importance) | Editable **draw.io** diagrams (org, data-plane 4-paths, identity/MFA, detect/respond) + `[NN]` component IDs linked to per-control docs (HippaTest convention). | ⬜ |
+| R1 | **S3 bucket with sensitive data** | `phi-sensitive-118821711925` holds tokenized ePHI; SSE-KMS, BPA on, TLS-only, VPC-locked. | DONE |
+| R2 | **Phishing-resistant MFA** via the IdP | Entra CA requires auth strength = Phishing-resistant MFA (`...0004`) for the admin group on the AWS app. | DOC-ONLY |
+| R3 | **Non-MFA blocked** | Same CA policy: the only accepted grant is the phishing-resistant strength, so password-only / non-MFA is blocked. | DOC-ONLY |
+| R4 | **Alerting** ("alarms for everything") | SNS `ith-security-alerts` + 9 CloudWatch metric-filter alarms + GuardDuty->SNS + the R12 IP alerter. 3 alarms already firing on real activity. | DONE |
+| R5 | **Everything is IaC** | 100% Terraform: `00-org`, `10-identity`, `20-workload`. | DONE |
+| R6 | **1 mgmt acct + 1 OU + 1 account in the OU** | Mgmt `337066574719` -> OU `InterviewTakeHome` -> member `ith-workload` (created via `aws_organizations_account`). | DONE |
+| R7 | **S3 inter-account suffix naming** | `phi-sensitive-<acct>`, `phi-deident-<acct>` - account id suffix = globally unique + traceable. | DONE |
+| R8 | **S3 must require an org-level SCP** | SCP `p-kt4wutiz` on the OU: deny non-TLS S3, deny PHI PutObject without SSE-KMS, protect account BPA. | DONE |
+| R9 | **RCP must stop S3 to outer org** | RCP `p-02p8l548gj` on the OU: deny `s3:*` when `aws:PrincipalOrgID != o-ncxqr8pp2c` (excl. AWS services). | DONE |
+| R10 | **IdP requires phishing-resistant MFA** | = R2 (Entra is the IdP; federation reused). | DOC-ONLY |
+| R11 | **CloudTrail + GuardDuty enabled** | `ith-trail` (multi-region, log-file validation, KMS, S3 data events, -> CW Logs). GuardDuty detector ENABLED. | DONE |
+| R12 | **Role assumptions -> IP-based alerting** | EventBridge on `AssumeRole*` -> Lambda `ith-ip-alerter` -> SNS when source IP outside the allow-list. Verified firing. | DONE |
+| R13 | **3 users** + README login URL | `ITH-SuperAdmin` (all), `ITH-Admin` (scoped, **deny kms:***), `ITH-S3Reader` (read S3 **only in-VPC**). Permission sets real; Entra users doc-only. Login URL on README p.1. | PARTIAL (perm-sets real / users doc-only) |
+| R14 | **Synthea, >=5 patient records** | 7 synthetic patients (FHIR -> tokenized). | DONE |
+| R15 | **S3 KMS, "per person"** -> per-patient CMK | One customer-managed KMS key **per patient** (7), object encrypted under its patient's CMK. Cost-vs-compliance documented (s.4). | DONE |
+| R16 | **4 paths to the bucket** | Lambda redactor (P1), on-prem k8s over peering (P2), EC2 web app SSM-only (P3), `s3` user gated on `aws:sourceVpce` (P4). All verified. | DONE |
+| R17 | **Security group as allow + port** | SG-as-source rules: endpoints SG <= app SG:443 and <= on-prem node SG:443 (cross-VPC over peering). No CIDR allows on the data plane. | DONE |
+| R18 | **Vaultless tokenization** | Deterministic, reversible, epoch-tagged AES-SIV tokens (no vault); rotate-forward. Round-trip verified. | DONE |
+| R19 | **Diagrams + readable docs** | Editable draw.io (4 pages) with `[NN]` IDs -> controls index, + 7 docs. | DONE |
 
 ## 1a. Clarifications added mid-flight
 
 | # | Added requirement | How satisfied | Status |
 |---|---|---|---|
-| C1 | **All 3 admins must read details only via the EC2 web UI** | Sensitive-bucket policy gives **no human identity** direct `GetObject`; humans hit the EC2-hosted web app, which reads S3 via the **EC2 instance role** from inside the VPC. | ⬜ |
-| C2 | **Lambda access point = "basic reader"** that **transforms data to non-sensitive** | **S3 Object Lambda Access Point** invokes a redactor Lambda that strips/masks PHI and returns **de-identified** fields only. | ⬜ |
-| C3 | **No EC2 login — use SSM auth** | EC2 has **no key pair, no SSH ingress**; access via **SSM Session Manager** only (instance role has SSM core; SG has no port-22). | ⬜ |
-| C4 | **2nd bucket** = copy of the data but **viewable outside the VPC** | `phi-deident-<acct>` holds the de-identified/tokenized copy; **no VPC condition** (readable anywhere in the org) but still org-locked (RCP), TLS-only, KMS-encrypted. Demonstrates the VPC-condition delta. | ⬜ |
+| C1 | **All 3 admins read details only via the EC2 web UI** | No human identity has direct `GetObject` on the sensitive bucket (verified AccessDenied from laptop); humans use the EC2 app, which reads via the instance role from inside the VPC. | DONE |
+| C2 | **Lambda "basic reader" transforms to non-sensitive** | Lambda `ith-redactor` (Function URL) reads via an S3 Access Point and returns only de-identified fields. Verified. | DONE |
+| C3 | **No EC2 login - use SSM** | EC2 has no key pair / no SSH / no public IP; access via SSM Session Manager only. | DONE |
+| C4 | **2nd bucket viewable outside the VPC** | `phi-deident-118821711925` holds the de-identified copy, readable anywhere in the org (still org-locked, TLS, KMS). | DONE |
 
 ---
 
 ## 2. The four access paths to the (sensitive) bucket
 
-| Path | Caller | Network route | Authz | Returns |
+| Path | Caller | Route | Authz | Returns |
 |---|---|---|---|---|
-| **P1 — Lambda redactor** | "basic reader" automation | invoke **S3 Object Lambda Access Point** | OLAP supporting access point + Lambda exec role | **non-sensitive** (redacted) fields only (C2) |
-| **P2 — On-prem Kubernetes** | pod in "on-prem" cluster | **VPC peering** on-prem VPC → workload VPC → **S3 Gateway endpoint** | pod/node IAM role, `aws:sourceVpce` | full object (in-cluster use) |
-| **P3 — EC2 web app** | human admins (all 3) | browser → EC2 web app (SSM-managed host) → **S3 interface/gateway endpoint** | **EC2 instance role**; humans never touch S3 directly (C1) | rendered patient details |
-| **P4 — `s3` principal direct** | the `s3` identity | CLI/SDK **from inside the VPC** only | IAM + bucket policy `aws:sourceVpce == <workload vpce>` | full object, VPC-gated (R13) |
+| **P1 Lambda redactor** | basic reader | invoke `ith-redactor` Function URL -> S3 Access Point | IAM + access-point delegation | **non-sensitive** fields only |
+| **P2 On-prem k8s** | k3s pod | **VPC peering** -> S3 **interface** endpoint | node role + `aws:sourceVpce` | full object |
+| **P3 EC2 web app** | human admins (all 3) | SSM port-forward -> EC2 app -> S3 **gateway** endpoint | EC2 instance role (humans have no direct S3) | rendered record (identifiers tokenized) |
+| **P4 `s3` user** | the `s3` identity | CLI/SDK **from inside the VPC** only | IAM + bucket policy `aws:sourceVpce` | full object, VPC-gated |
 
-> **Peering scalability caveat (documented in `docs/`):** VPC peering is
-> **non-transitive** and **N²** — every new VPC needing the data tier adds a new
-> peering + route-table entries on both sides; it doesn't scale past a handful of
-> VPCs. Transit Gateway (or PrivateLink to a single endpoint service) is the scalable
-> successor. Peering is used here deliberately to match the brief and to make the
-> tradeoff concrete.
+> **Peering scalability caveat:** peering is non-transitive & N^2; Transit Gateway is the
+> scalable successor. Used here deliberately to match the brief.
+> **Gateway vs interface:** gateway endpoints aren't reachable across peering, which is
+> exactly why P2 (on-prem) needs the S3 *interface* endpoint.
 
 ---
 
-## 3. Out of scope (noted as useful, intentionally excluded)
+## 3. Out of scope (considered, intentionally excluded)
 
-Called out so the interviewer sees these were *considered*, not missed:
+- **AWS Control Tower** - automates landing zone/guardrails; overkill for 1-OU/1-account.
+- **AWS Backup / recovery** - immutable cross-region tested restores; orthogonal to access control.
+- **ALB** - no public web tier; EC2 reached via SSM.
+- **Application Recovery Controller** - multi-region failover; no HA region here.
+- **Root-account usage alerting** - root lives in the mgmt account we don't fully own.
+- **Centralized logging** (dedicated Log Archive account) - kept logs in the workload account.
+- **Amazon Inspector** - runtime/SCA vuln scanning; orthogonal to the access-control story.
 
-- **AWS Control Tower** — would automate landing-zone/guardrails; overkill for a 1-OU/1-account demo (we do the org plumbing by hand to show it).
-- **Backup & recovery (AWS Backup)** — production ePHI needs immutable, cross-region, tested restores; out of scope for an access-control demo.
-- **ALB** — no public web tier in scope; EC2 app reached via SSM, not internet ingress.
-- **Application Recovery Controller (ARC)** — multi-region failover routing; no HA region here.
-- **Root-account usage alerting** — included conceptually in alarms list but root is the org mgmt account we don't own end-to-end; we alarm what we can in the workload account.
-- **Centralized logging** (org-wide log-archive account) — we keep CloudTrail/Config in the workload account for the demo; production would ship to a dedicated Log Archive account.
-- **Amazon Inspector** — runtime/SCA vuln scanning of shared libraries & EC2/containers; valuable but orthogonal to the access-control story.
-
-**VPC endpoint note:** requiring all S3 access through **VPC endpoints is operational
-overhead** (extra resources, endpoint policies, the "silent public-endpoint fallback"
-trap) — but for **sensitive data it is a strong control**: it keeps traffic on the AWS
-backbone and lets the bucket policy gate on `aws:sourceVpce`, which is the mechanism
-behind P3/P4 and the VPC-only property of the sensitive bucket.
+**VPC-endpoint note:** requiring all S3 access via VPC endpoints is overhead (extra
+resources, endpoint policies, the silent public-endpoint fallback trap) but for sensitive
+data it is a strong control - it keeps traffic on the AWS backbone and powers the
+`aws:sourceVpce` gate behind P3/P4.
 
 ---
 
-## 4. Documented tradeoffs
+## 4. Documented tradeoffs (full detail in [`docs/tradeoffs-and-out-of-scope.md`](docs/tradeoffs-and-out-of-scope.md))
 
-- **Per-patient KMS CMK (R15) — cost vs compliance.** *Compliance upside:* hard
-  cryptographic blast-radius isolation per data subject; disable one key → exactly one
-  patient's data goes dark (a per-subject "right to erasure"/incident lever); per-key
-  CloudTrail = per-patient access audit. *Cost/ops downside:* **$1/key/month** + API
-  costs, and AWS soft limit ~100k keys/region; key sprawl and lifecycle become real
-  ops. *Verdict for real systems:* prefer **one CMK + per-patient data keys / encryption
-  context** (same audit & isolation story, no key sprawl). We implement the literal
-  per-patient-CMK ask here and document this as the recommended production alternative.
-- **Vaultless tokenization (R18).** No token vault to run/secure/scale; tokens are
-  self-describing (carry key epoch). Rotate by minting a new DEK epoch for new writes
-  and retaining old epochs for reads — no mass re-tokenization. Tradeoff: tokens are
-  deterministic per epoch (enables join/equality) which is a re-identification surface
-  vs. fully random vault tokens — acceptable for de-identified analytics, documented.
-- **VPC peering (R16/P2)** — see §2 caveat (N², non-transitive; TGW is the successor).
+- **Per-patient KMS CMK - cost vs compliance.** Upside: per-subject crypto blast radius
+  (disable one key -> one patient dark) + per-key audit. Downside: ~$1/key/month, ~100k
+  keys/region soft limit, key sprawl. Recommended prod alternative: one CMK + per-patient
+  data keys / encryption context (same audit + isolation, no sprawl). We implemented the
+  literal per-patient-CMK as asked.
+- **Vaultless tokenization.** No vault to run/secure/scale; tokens carry the key epoch;
+  rotate forward without mass re-tokenization. Tradeoff: deterministic tokens enable joins
+  (a re-identification surface) - acceptable for de-identified analytics.
+- **VPC peering** - N^2 / non-transitive; TGW is the successor (see s.2).
 
 ---
 
-## 5. Deliverables checklist
+## 5. Deliverables
 
-- [ ] `terraform/00-org` — OU, member account, SCP, RCP
-- [ ] `terraform/10-identity` — Entra users/group, CA (phishing-resistant + non-MFA block), Identity Center permission sets + assignments
-- [ ] `terraform/20-workload` — KMS, 2× S3, VPC×2 + peering + endpoints, SGs, EC2(SSM), Lambda+OLAP, on-prem node, CloudTrail, GuardDuty, alarms, SNS
-- [ ] `app/` — web app, redactor Lambda, vaultless tokenizer
-- [ ] `data/` — Synthea ≥5 patients, tokenized
-- [ ] `diagrams/` — draw.io (org / data-plane / identity / detect-respond) with `[NN]` IDs
-- [ ] `docs/` — design, per-control mapping, cost/compliance, peering, VPC-endpoint, out-of-scope
-- [ ] `README.md` — page 1: 3 users + login URL; how to deploy/validate
-- [ ] `scripts/teardown.*` — full destroy + account-close runbook (run after verdict)
+- [x] `terraform/00-org` - OU, member account, SCP, RCP (applied)
+- [x] `terraform/10-identity` - permission sets (applied); Entra/CA (doc-only)
+- [x] `terraform/20-workload` - KMS, 2x S3, VPCx2 + peering + endpoints, SGs, EC2, Lambda, detection (applied)
+- [x] `app/` - web app, redactor Lambda, IP-alerter, vaultless tokenizer
+- [x] `data/` - 7 Synthea patients, tokenized
+- [x] `diagrams/` - draw.io (4 pages) + `[NN]` controls index
+- [x] `docs/` - design, paths, identity, crypto, detection, tradeoffs, EVIDENCE
+- [x] `README.md` - page 1: 3 users + login URL
+- [x] `scripts/` - data upload + teardown runbook
