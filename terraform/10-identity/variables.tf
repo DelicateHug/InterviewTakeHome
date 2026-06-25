@@ -63,3 +63,11 @@ variable "owner_username" {
   type        = string
   default     = "DylanSmart@delicatehug.com"
 }
+
+# Assign the 3 SCIM-provisioned demo users (ith-superadmin / ith-admin / ith-s3) to their
+# permission sets on the workload account. Flip to true only AFTER they have provisioned
+# into Identity Center (otherwise the identity-store lookups fail). Does not touch Entra.
+variable "assign_demo_users" {
+  type    = bool
+  default = false
+}

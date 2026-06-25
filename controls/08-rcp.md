@@ -1,13 +1,19 @@
-# [08] RCP - deny S3 outside org
+# [08] RCP (deny S3 outside org)
 
-- **Type:** Resource Control Policy
-- **Requirements:** R9
+**Type:** Resource Control Policy
+
+> **In plain terms —** A resource-side org rule that denies all S3 access to any principal outside this organization — a backstop in case a bucket policy is ever misconfigured.
 
 ## Controls applied
 
-- Deny `s3:*` when `aws:PrincipalOrgID != o-ncxqr8pp2c` (resource-side).
-- Excludes AWS service principals (`aws:PrincipalIsAWSService`).
-- Stops confused-deputy / cross-account access even if a bucket policy were mis-set.
+- **Prevention:** Resource-side deny of `s3:*` when `aws:PrincipalOrgID` != this org (AWS services excluded). Stops external / confused-deputy access even if a bucket policy were mis-set.
+- **Detection:** Org CloudTrail on policy changes.
+- **Alert:** Policy change → change-alerter [40].
+
+## What would trigger an alert
+
+- A principal from another AWS account (or the public) tries to read a bucket → denied by the RCP → s3-access-denied alarm [35].
+- The RCP is edited or detached → change-alerter [40] → SNS [36].
 
 ---
 [< controls index](README.md) | [< home](../README.md)

@@ -1,0 +1,54 @@
+# ITH P5 — the pod that actually READS and WRITES the sensitive bucket, but only ever
+# sees ciphertext. All crypto is delegated to the Nitro Enclave via the host broker
+# (http://127.0.0.1:7070, reachable because the pod uses hostNetwork). S3 I/O goes over
+# the workload S3 interface endpoint across the VPC peering (aws:sourceVpce still holds).
+#
+# Values (BUCKET / REGION / S3_ENDPOINT / BROKER / PATIENT) come from the `enclave-cfg`
+# ConfigMap that the node's userdata creates from real Terraform outputs.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: phi-rw-enclave
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels: { app: phi-rw-enclave }
+    spec:
+      hostNetwork: true                 # reach the host broker on 127.0.0.1 + node IMDS role
+      dnsPolicy: ClusterFirstWithHostNet
+      restartPolicy: Never
+      containers:
+        - name: rw
+          image: public.ecr.aws/aws-cli/aws-cli:latest
+          envFrom:
+            - configMapRef: { name: enclave-cfg }
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              set -euo pipefail
+              command -v curl >/dev/null 2>&1 || (dnf install -y curl-minimal 2>/dev/null || dnf install -y curl 2>/dev/null || true)
+              BROKER="${BROKER:-http://127.0.0.1:7070}"
+              EP="--endpoint-url https://${S3_ENDPOINT} --region ${REGION}"
+              KEY="enclave/${PATIENT}.enc"
+
+              echo "== P5 attested enclave read/write =="
+              echo "broker health: $(curl -s ${BROKER}/healthz)"
+
+              # ---- WRITE: plaintext -> enclave encrypt -> S3 (only ciphertext is stored)
+              PT="{\"patient_id\":\"${PATIENT}\",\"ssn\":\"999-00-1234\",\"name\":\"Enclave Demo\",\"note\":\"written via attested Nitro Enclave (PCR0-gated KMS)\"}"
+              PT_B64=$(printf '%s' "$PT" | base64 -w0)
+              ENC=$(curl -s -X POST "${BROKER}/encrypt" -H 'content-type: application/json' -d "{\"plaintext_b64\":\"${PT_B64}\"}")
+              echo "encrypt -> ${ENC}"
+              echo "$ENC" | grep -q '"ok": true' || { echo "ENCRYPT_FAILED"; exit 1; }
+              printf '%s' "$ENC" > /tmp/blob.json
+              aws s3api put-object --bucket "${BUCKET}" --key "${KEY}" --body /tmp/blob.json ${EP} >/dev/null
+              echo "WROTE s3://${BUCKET}/${KEY}"
+
+              # ---- READ: S3 ciphertext -> enclave decrypt -> plaintext
+              aws s3api get-object --bucket "${BUCKET}" --key "${KEY}" ${EP} /tmp/back.json >/dev/null
+              DEC=$(curl -s -X POST "${BROKER}/decrypt" -H 'content-type: application/json' --data @/tmp/back.json)
+              echo "decrypt -> ${DEC}"
+              PT_OUT=$(printf '%s' "$DEC" | sed -n 's/.*"plaintext_b64":"\([^"]*\)".*/\1/p' | base64 -d || true)
+              echo "READ_OK ${PT_OUT}"
+              test "${PT_OUT}" = "${PT}" && echo "ROUNDTRIP_MATCH=yes" || { echo "ROUNDTRIP_MATCH=no"; exit 1; }

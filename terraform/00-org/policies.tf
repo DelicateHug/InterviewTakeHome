@@ -97,3 +97,43 @@ resource "aws_organizations_policy_attachment" "rcp_to_ou" {
   policy_id = aws_organizations_policy.rcp_s3_org_only.id
   target_id = aws_organizations_organizational_unit.ith.id
 }
+
+# ---- Strict allow-list SCP : restrict the ITH account to demo-only services ----------
+# "Deny everything except what this demo needs." Implemented as an Allow-list SCP: the
+# effective permission is the INTERSECTION with the root FullAWSAccess, so only the listed
+# service namespaces are usable - by ANY principal in the account, including SuperAdmin and
+# the deploy role. The list is exactly the services this stack creates + runs:
+#   data/crypto: s3, kms          compute: ec2, lambda, ssm(+messages), ec2messages
+#   identity:    iam, sts         detection: cloudtrail, guardduty, cloudwatch, logs, sns, events
+#   misc:        tag (resource tagging used across the above)
+# Anything else (rds, dynamodb, etc.) is implicitly denied. Attached to the ACCOUNT, not the OU.
+resource "aws_organizations_policy" "scp_account_allowlist" {
+  name        = "ith-scp-account-allowlist"
+  description = "Restrict the ITH account to only the services this demo needs."
+  type        = "SERVICE_CONTROL_POLICY"
+
+  content = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AllowDemoServicesOnly"
+        Effect = "Allow"
+        Action = [
+          "s3:*", "kms:*", "ec2:*", "lambda:*",
+          "ssm:*", "ssmmessages:*", "ec2messages:*",
+          "iam:*", "sts:*", "tag:*",
+          "cloudtrail:*", "guardduty:*", "cloudwatch:*",
+          "logs:*", "sns:*", "events:*"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+
+  tags = local.tags
+}
+
+resource "aws_organizations_policy_attachment" "scp_allowlist_to_account" {
+  policy_id = aws_organizations_policy.scp_account_allowlist.id
+  target_id = aws_organizations_account.workload.id
+}

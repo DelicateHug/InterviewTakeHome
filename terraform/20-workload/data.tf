@@ -18,6 +18,9 @@ locals {
   patient_index = jsondecode(file("${path.module}/../../data/patient-index.json"))
   patients      = { for p in local.patient_index.patients : p.patient_id => p }
 
+  # P5 — SSM parameter the node publishes its enclave PCR0 to (two-phase deploy).
+  enclave_pcr0_param = "/ith/enclave/pcr0"
+
   tags = {
     Project   = "InterviewTakeHome"
     ManagedBy = "Terraform"

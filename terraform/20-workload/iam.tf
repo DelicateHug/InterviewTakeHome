@@ -177,10 +177,26 @@ data "aws_iam_policy_document" "onprem_k8s" {
     actions   = ["s3:GetObject", "s3:ListBucket"]
     resources = [aws_s3_bucket.sensitive.arn, "${aws_s3_bucket.sensitive.arn}/*"]
   }
+  # P5 — the enclave pod WRITES client-side-encrypted blobs under enclave/* only.
+  statement {
+    sid       = "WriteEnclaveBlobs"
+    actions   = ["s3:PutObject"]
+    resources = ["${aws_s3_bucket.sensitive.arn}/enclave/*"]
+  }
+  # kms:Decrypt covers the per-patient CMKs (P2 read). GenerateDataKey is added for the
+  # P5 envelope. The IAM grant is broad on the key namespace ON PURPOSE — the enclave KMS
+  # key's OWN policy [43] is the authoritative gate (attestation/PCR0), so a non-attested
+  # call from this role is still denied by the key policy.
   statement {
     sid       = "DecryptPhi"
-    actions   = ["kms:Decrypt", "kms:DescribeKey"]
+    actions   = ["kms:Decrypt", "kms:GenerateDataKey*", "kms:DescribeKey"]
     resources = [local.kms_key_namespace]
+  }
+  # P5 — publish the measured PCR0 to SSM so the 2nd apply can lock the key to it.
+  statement {
+    sid       = "PublishEnclavePcr0"
+    actions   = ["ssm:PutParameter", "ssm:GetParameter"]
+    resources = ["arn:${data.aws_partition.current.partition}:ssm:${local.region}:${local.account_id}:parameter${local.enclave_pcr0_param}"]
   }
 }
 

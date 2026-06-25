@@ -1,48 +1,22 @@
 #!/bin/bash
+# ITH on-prem k8s node — thin bootstrap (P2 read + P5 attested enclave read/write).
+# Real work is in setup-node.sh (plain bash, shipped base64 below) so this template only
+# carries Terraform-interpolated VALUES, never bash brace-vars that templatefile mangles.
 set -xe
-# "On-prem" Kubernetes node: single-node k3s (installed via the datacenter's internet
-# egress / IGW). A CronJob reads the SENSITIVE bucket across the VPC PEERING using the
-# workload S3 INTERFACE endpoint, authorized by the node instance role + aws:sourceVpce.
 export HOME=/root
+mkdir -p /opt/ith-enclave
 
-curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable traefik --disable servicelb" sh -
-export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+echo "${dockerfile_b64}"     | base64 -d > /opt/ith-enclave/Dockerfile
+echo "${enclave_server_b64}" | base64 -d > /opt/ith-enclave/enclave_server.py
+echo "${host_broker_b64}"    | base64 -d > /opt/ith-enclave/host_broker.py
+echo "${build_enclave_b64}"  | base64 -d > /opt/ith-enclave/build-enclave.sh
+echo "${setup_node_b64}"     | base64 -d > /opt/ith-enclave/setup-node.sh
+echo "${pod_manifest_b64}"   | base64 -d > /opt/ith-enclave/phi-rw-enclave.yaml
+chmod +x /opt/ith-enclave/*.sh
 
-# wait for the node to be Ready
-for i in $(seq 1 40); do
-  /usr/local/bin/kubectl get nodes 2>/dev/null | grep -q " Ready" && break
-  sleep 5
-done
-
-cat >/root/phi-reader.yaml <<EOF
-apiVersion: batch/v1
-kind: CronJob
-metadata:
-  name: phi-reader
-spec:
-  schedule: "*/5 * * * *"
-  jobTemplate:
-    spec:
-      backoffLimit: 1
-      template:
-        spec:
-          restartPolicy: Never
-          containers:
-          - name: awscli
-            image: public.ecr.aws/aws-cli/aws-cli:latest
-            command: ["/bin/sh","-c"]
-            args:
-              - >
-                aws s3api get-object
-                --bucket ${bucket}
-                --key ${sample_key}
-                --endpoint-url https://${s3_vpce_dns}
-                --region ${region}
-                /tmp/o
-                && echo "READ_OK $(wc -c </tmp/o) bytes from ${bucket}/${sample_key} via ${s3_vpce_dns}"
-EOF
-
-/usr/local/bin/kubectl apply -f /root/phi-reader.yaml
-# one immediate run for evidence
-/usr/local/bin/kubectl create job phi-reader-init --from=cronjob/phi-reader || true
-echo "k3s + phi-reader deployed"
+# REGION BUCKET S3_ENDPOINT KEY_ALIAS PCR0_PARAM SAMPLE_KEY ACCOUNT_ID
+/opt/ith-enclave/setup-node.sh \
+  "${region}" "${bucket}" "${s3_vpce_dns}" "${enclave_key_alias}" \
+  "${pcr0_param}" "${sample_key}" "${account_id}" \
+  > /var/log/ith-setup.log 2>&1
+echo "userdata handed off to setup-node.sh (see /var/log/ith-setup.log)"

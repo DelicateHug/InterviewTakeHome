@@ -53,3 +53,29 @@ output "patient_key_aliases" {
 output "ssm_webapp_portforward_hint" {
   value = "aws ssm start-session --target ${aws_instance.webapp.id} --document-name AWS-StartPortForwardingSession --parameters portNumber=8080,localPortNumber=8080 --profile ith-workload --region ${local.region}  # then open http://localhost:8080"
 }
+
+# ---- P5 attested enclave ------------------------------------------------------------
+output "enclave_key_alias" {
+  description = "P5 — attestation-gated CMK; unlocks only for the measured enclave (PCR0)."
+  value       = aws_kms_alias.enclave.name
+}
+
+output "enclave_pcr0_param" {
+  description = "P5 — SSM param the node publishes its enclave PCR0 to (two-phase deploy)."
+  value       = local.enclave_pcr0_param
+}
+
+output "enclave_pcr0_locked" {
+  description = "P5 — the PCR0 currently locked into the enclave key policy ('' = phase A, unlocked)."
+  value       = var.enclave_pcr0
+}
+
+output "enclave_demo_hint" {
+  description = "P5 — see the attested read/write round-trip + the negative (no-attestation) test."
+  value = join("\n", [
+    "# round-trip pod logs (WROTE / READ_OK):",
+    "aws ssm start-session --target ${aws_instance.onprem.id} --profile ith-workload --region ${local.region} --document-name AWS-StartInteractiveCommand --parameters command='kubectl logs job/phi-rw-enclave'",
+    "# negative test — node role, NO enclave attestation -> AccessDenied:",
+    "aws kms generate-data-key --key-id ${aws_kms_alias.enclave.name} --key-spec AES_256 --profile ith-workload --region ${local.region}",
+  ])
+}

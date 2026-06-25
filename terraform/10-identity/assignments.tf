@@ -63,3 +63,38 @@ resource "aws_ssoadmin_account_assignment" "owner_superadmin" {
   target_id          = local.workload_account_id
   target_type        = "AWS_ACCOUNT"
 }
+
+# ---- Demo user assignments (SSO) -----------------------------------------------------
+# The 3 interview users are created in Entra via the az CLI and SCIM-provisioned into
+# Identity Center. These bind each user to its permission set on the workload account.
+# Gated on assign_demo_users (the data lookups need the users to already exist in the
+# identity store). Deliberately DECOUPLED from enable_entra_changes so it never creates or
+# modifies anything in the Entra tenant - it only consumes already-provisioned users.
+locals {
+  demo_user_assignments = var.assign_demo_users && var.create_permission_sets ? {
+    "ith-superadmin" = "ITH-SuperAdmin"
+    "ith-admin"      = "ITH-Admin"
+    "ith-s3"         = "ITH-S3Reader"
+  } : {}
+}
+
+data "aws_identitystore_user" "demo" {
+  for_each          = local.demo_user_assignments
+  identity_store_id = local.identity_store_id
+  alternate_identifier {
+    unique_attribute {
+      attribute_path  = "UserName"
+      attribute_value = "${each.key}@${var.tenant_domain}"
+    }
+  }
+}
+
+resource "aws_ssoadmin_account_assignment" "demo" {
+  for_each           = local.demo_user_assignments
+  instance_arn       = local.instance_arn
+  permission_set_arn = local.permission_set_arns[each.value]
+  principal_id       = data.aws_identitystore_user.demo[each.key].user_id
+  principal_type     = "USER"
+  target_id          = local.workload_account_id
+  target_type        = "AWS_ACCOUNT"
+}

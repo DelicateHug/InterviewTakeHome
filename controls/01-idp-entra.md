@@ -1,14 +1,19 @@
 # [01] Microsoft Entra ID
 
-- **Type:** Identity Provider (IdP)
-- **Requirements:** R2,R3,R10
+**Type:** Identity Provider (IdP)
+
+> **In plain terms —** The company's identity provider, and where the three admin users actually live. AWS trusts it for login, so there are no AWS-local passwords to steal.
 
 ## Controls applied
 
-- External IdP federated into AWS IAM Identity Center via SAML + SCIM provisioning.
-- Conditional Access (see [04]) is the enforcement point for phishing-resistant MFA.
-- Tenant `delicatehug.com`; AAD_PREMIUM (P1) present so CA + auth strengths are licensed.
-- Guardrail: no live-tenant changes were applied (Entra IaC left disabled).
+- **Prevention:** External IdP federated to Identity Center (SAML + SCIM); CA [04] enforces phishing-resistant MFA (doc-only). Only the 3 demo users were added to the live tenant.
+- **Detection:** Entra sign-in logs (tenant side).
+- **Alert:** Risky / non-MFA sign-in via Entra Identity Protection (recommended, out of scope).
+
+## What would trigger an alert
+
+- A user signs in without phishing-resistant MFA → blocked by CA [04] once enabled; risky sign-in flagged by Entra Identity Protection (recommended).
+- A new Entra user is granted the AWS app → the resulting assignment in Identity Center is caught by change-alerter [40] → SNS [36].
 
 ---
 [< controls index](README.md) | [< home](../README.md)

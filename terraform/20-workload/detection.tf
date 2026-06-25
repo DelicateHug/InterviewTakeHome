@@ -259,6 +259,66 @@ resource "aws_lambda_permission" "assume_role_events" {
   source_arn    = aws_cloudwatch_event_rule.assume_role.arn
 }
 
+# ---- [40] Change / CreateUser alerter : exclusion-based metric filters ---------------
+# Alert on (a) IAM user creation and (b) ANY mutating action against this system's
+# resources, UNLESS the actor is on the exclusion list (default: ITH-SuperAdmin + the
+# deploy role). Implemented as CloudWatch Logs metric filters (not EventBridge) because
+# CreateUser is a GLOBAL IAM event delivered to us-east-1 - an EventBridge rule in this
+# region would miss it. The multi-region trail (include_global_service_events) writes all
+# events into this one log group, so a filter here catches them regardless of region.
+variable "change_alert_excluded_arns" {
+  description = "Substrings of principal ARNs whose changes do NOT alert (the exclusion/allow list)."
+  type        = list(string)
+  default     = ["ITH-SuperAdmin", "OrganizationAccountAccessRole"] # super admin + IaC deploy role
+}
+
+locals {
+  # Build '&& ($.userIdentity.arn != "*X*")' for each excluded principal substring.
+  change_excl_clause = join(" ", [
+    for a in var.change_alert_excluded_arns : "&& ($.userIdentity.arn != \"*${a}*\")"
+  ])
+
+  change_filters = {
+    unauthorized-create-user = {
+      pattern     = "{ ($.eventName = \"CreateUser\") ${local.change_excl_clause} }"
+      description = "IAM user created by a non-excluded principal (exclusion: super admin + deploy role)"
+    }
+    unauthorized-change = {
+      pattern     = "{ ($.readOnly IS FALSE) && ($.userIdentity.invokedBy NOT EXISTS) && ($.userIdentity.type != \"AWSService\") ${local.change_excl_clause} }"
+      description = "Mutating action on a system resource by a non-excluded principal (exclusion: super admin + deploy role)"
+    }
+  }
+}
+
+resource "aws_cloudwatch_log_metric_filter" "change" {
+  for_each       = local.change_filters
+  name           = "ith-${each.key}"
+  log_group_name = aws_cloudwatch_log_group.trail.name
+  pattern        = each.value.pattern
+
+  metric_transformation {
+    name          = "ith-${each.key}"
+    namespace     = "ITH/Security"
+    value         = "1"
+    default_value = "0"
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "change" {
+  for_each            = local.change_filters
+  alarm_name          = "ith-${each.key}"
+  alarm_description   = each.value.description
+  namespace           = "ITH/Security"
+  metric_name         = "ith-${each.key}"
+  statistic           = "Sum"
+  period              = 300
+  evaluation_periods  = 1
+  threshold           = 1
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+}
+
 # ---- GuardDuty findings -> SNS ------------------------------------------------------
 resource "aws_cloudwatch_event_rule" "guardduty" {
   name        = "ith-guardduty-findings"
