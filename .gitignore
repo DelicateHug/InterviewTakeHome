@@ -4,15 +4,17 @@
 *.tfstate.*
 crash.log
 crash.*.log
-*.tfvars            # may contain emails / ids — commit *.tfvars.example only
-!*.tfvars.example
 override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
 .terraformrc
 terraform.rc
-.terraform.lock.hcl  # keep? we intentionally ignore to avoid platform churn
+# tfvars may contain emails / account ids / secrets -> never commit.
+# Commit *.tfvars.example instead.
+*.tfvars
+!*.tfvars.example
+# NOTE: .terraform.lock.hcl IS intentionally tracked (reproducible provider pins).
 
 # ---- Build artifacts (lambda zips, layers) ----
 *.zip
