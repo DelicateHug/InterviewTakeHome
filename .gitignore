@@ -24,6 +24,9 @@ build/
 # ---- Terraform working logs / saved plans ----
 *.log
 tfplan
+tfplan.*
+*.tfplan
+**/tfplan*
 
 # ---- Synthea tooling (large jar, raw run output) ----
 .tools/
