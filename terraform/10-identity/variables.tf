@@ -49,3 +49,17 @@ variable "login_url" {
   type        = string
   default     = "https://d-96677e53fe.awsapps.com/start/"
 }
+
+# Assign the EXISTING owner identity (already SCIM-provisioned) ITH-SuperAdmin on the
+# workload account, so the new account shows up + is usable in the SSO portal. This is
+# additive (does not touch Entra) and is how you actually reach the account via SSO.
+variable "assign_owner_superadmin" {
+  type    = bool
+  default = true
+}
+
+variable "owner_username" {
+  description = "Existing Identity Center UserName to grant ITH-SuperAdmin on the new account."
+  type        = string
+  default     = "DylanSmart@delicatehug.com"
+}

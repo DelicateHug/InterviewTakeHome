@@ -41,3 +41,25 @@ resource "aws_ssoadmin_account_assignment" "u" {
   target_id   = local.workload_account_id
   target_type = "AWS_ACCOUNT"
 }
+
+# ---- Owner assignment (makes the new account visible/usable in the SSO portal) -------
+data "aws_identitystore_user" "owner" {
+  count             = var.assign_owner_superadmin && var.create_permission_sets ? 1 : 0
+  identity_store_id = local.identity_store_id
+  alternate_identifier {
+    unique_attribute {
+      attribute_path  = "UserName"
+      attribute_value = var.owner_username
+    }
+  }
+}
+
+resource "aws_ssoadmin_account_assignment" "owner_superadmin" {
+  count              = var.assign_owner_superadmin && var.create_permission_sets ? 1 : 0
+  instance_arn       = local.instance_arn
+  permission_set_arn = aws_ssoadmin_permission_set.superadmin[0].arn
+  principal_id       = data.aws_identitystore_user.owner[0].user_id
+  principal_type     = "USER"
+  target_id          = local.workload_account_id
+  target_type        = "AWS_ACCOUNT"
+}

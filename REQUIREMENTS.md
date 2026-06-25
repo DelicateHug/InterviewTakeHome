@@ -117,7 +117,7 @@ data it is a strong control - it keeps traffic on the AWS backbone and powers th
 
 ---
 
-## 4. Documented tradeoffs (full detail in [`docs/tradeoffs-and-out-of-scope.md`](docs/tradeoffs-and-out-of-scope.md))
+## 4. Documented tradeoffs (full detail in [`controls/OutOfScopeNotes.md`](controls/OutOfScopeNotes.md))
 
 - **Per-patient KMS CMK - cost vs compliance.** Upside: per-subject crypto blast radius
   (disable one key -> one patient dark) + per-key audit. Downside: ~$1/key/month, ~100k
