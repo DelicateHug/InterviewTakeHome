@@ -23,14 +23,20 @@ resource "aws_instance" "onprem" {
     volume_size = 20
   }
 
-  user_data = base64encode(templatefile("${path.module}/templates/onprem_userdata.sh.tftpl", {
+  user_data_base64 = base64encode(templatefile("${path.module}/templates/onprem_userdata.sh.tftpl", {
     bucket      = aws_s3_bucket.sensitive.id
     region      = local.region
-    s3_vpce_dns = aws_vpc_endpoint.s3_interface.dns_entry[0].dns_name
+    # dns_entry is a wildcard "*.vpce-...": strip "*." so aws cli virtual-hosts the bucket.
+    s3_vpce_dns = replace(aws_vpc_endpoint.s3_interface.dns_entry[0].dns_name, "*.", "")
     sample_key  = local.first_patient_key
   }))
+  user_data_replace_on_change = true # re-provision k3s when the boot script changes
 
   tags = { Name = "ith-onprem-k8s" }
+
+  lifecycle {
+    ignore_changes = [ami]
+  }
 
   depends_on = [
     aws_route.onprem_to_workload,

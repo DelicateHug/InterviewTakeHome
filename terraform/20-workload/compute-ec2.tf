@@ -41,7 +41,7 @@ resource "aws_instance" "webapp" {
     volume_size = 8
   }
 
-  user_data = base64encode(templatefile("${path.module}/templates/webapp_userdata.sh.tftpl", {
+  user_data_base64 = base64encode(templatefile("${path.module}/templates/webapp_userdata.sh.tftpl", {
     server_py_b64 = base64encode(file("${path.module}/../../app/webapp/server.py"))
     bucket        = aws_s3_bucket.sensitive.id
     region        = local.region
@@ -49,6 +49,11 @@ resource "aws_instance" "webapp" {
   }))
 
   tags = { Name = "ith-webapp" }
+
+  # Don't let AL2023 AMI churn (most_recent) force surprise replacements.
+  lifecycle {
+    ignore_changes = [ami]
+  }
 
   depends_on = [
     aws_vpc_endpoint.interface, # SSM endpoints must exist for the agent to register

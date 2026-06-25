@@ -14,13 +14,13 @@ output "cloudtrail_bucket" {
   value = aws_s3_bucket.cloudtrail.id
 }
 
-output "object_lambda_access_point_arn" {
-  description = "P1 — invoke GetObject on this OLAP to get redacted (non-sensitive) data."
-  value       = aws_s3control_object_lambda_access_point.redactor.arn
+output "redactor_function_url" {
+  description = "P1 - IAM-signed GET <url>?key=patients/<id>.json returns redacted (non-sensitive) data."
+  value       = aws_lambda_function_url.redactor.function_url
 }
 
-output "object_lambda_access_point_alias" {
-  value = aws_s3control_object_lambda_access_point.redactor.alias
+output "sensitive_access_point_arn" {
+  value = aws_s3_access_point.sensitive.arn
 }
 
 output "webapp_instance_id" {

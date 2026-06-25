@@ -78,7 +78,11 @@ data "aws_iam_policy_document" "sensitive_bucket" {
   }
 
   # The core control: reads must come from inside the VPC (sourceVpce) OR via our
-  # Object Lambda access point. Anything else (a human laptop) is denied -> EC2 UI only.
+  # access point. Anything else (a human laptop) is denied -> EC2 UI only (C1).
+  # EXEMPTION: the OrganizationAccountAccessRole is the infra/break-glass MANAGEMENT
+  # principal (how Terraform manages the bucket). It is exempted so refresh/import work
+  # from outside the VPC; the 3 IdP admin identities are NOT this role, so they remain
+  # fully VPC-gated and must still use the EC2 UI.
   statement {
     sid     = "DenyReadsNotFromVpcOrAccessPoint"
     effect  = "Deny"
@@ -102,6 +106,11 @@ data "aws_iam_policy_document" "sensitive_bucket" {
       test     = "BoolIfExists"
       variable = "aws:PrincipalIsAWSService"
       values   = ["false"]
+    }
+    condition {
+      test     = "ArnNotLike"
+      variable = "aws:PrincipalArn"
+      values   = ["arn:${data.aws_partition.current.partition}:iam::${local.account_id}:role/OrganizationAccountAccessRole"]
     }
   }
 

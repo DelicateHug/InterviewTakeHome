@@ -9,7 +9,7 @@
 # ---- Interface-endpoint SG (the "allow" target) -------------------------------------
 resource "aws_security_group" "endpoints" {
   name        = "ith-endpoints-sg"
-  description = "Interface VPC endpoints — 443 from app SG and on-prem node SG only"
+  description = "Interface VPC endpoints - 443 from app SG and on-prem node SG only"
   vpc_id      = aws_vpc.workload.id
   tags        = { Name = "ith-endpoints-sg" }
 }
@@ -17,7 +17,7 @@ resource "aws_security_group" "endpoints" {
 # ---- Web-app SG (P3) : no inbound; egress only to endpoints + S3 prefix list ---------
 resource "aws_security_group" "app" {
   name        = "ith-app-sg"
-  description = "EC2 web app — no inbound (SSM only); egress 443 to endpoints + S3"
+  description = "EC2 web app - no inbound (SSM only); egress 443 to endpoints + S3"
   vpc_id      = aws_vpc.workload.id
   tags        = { Name = "ith-app-sg" }
 }
@@ -25,7 +25,7 @@ resource "aws_security_group" "app" {
 # ---- On-prem node SG (P2) : no inbound (SSM only); egress all (internet + S3 vpce) ---
 resource "aws_security_group" "onprem_node" {
   name        = "ith-onprem-node-sg"
-  description = "On-prem k8s node — no inbound (SSM only); egress to internet + S3 vpce"
+  description = "On-prem k8s node - no inbound (SSM only); egress to internet + S3 vpce"
   vpc_id      = aws_vpc.onprem.id
   tags        = { Name = "ith-onprem-node-sg" }
 }

@@ -111,14 +111,12 @@ resource "aws_iam_role_policy_attachment" "lambda_basic" {
 
 data "aws_iam_policy_document" "lambda_redactor" {
   statement {
-    sid       = "ReadSensitiveViaOlap"
-    actions   = ["s3:GetObject"]
-    resources = ["${aws_s3_bucket.sensitive.arn}/*"]
-  }
-  statement {
-    sid       = "WriteTransformedResponse"
-    actions   = ["s3-object-lambda:WriteGetObjectResponse"]
-    resources = ["*"]
+    sid     = "ReadSensitiveViaAccessPoint"
+    actions = ["s3:GetObject"]
+    resources = [
+      "${aws_s3_bucket.sensitive.arn}/*",
+      "${aws_s3_access_point.sensitive.arn}/object/*",
+    ]
   }
   statement {
     sid       = "DecryptPhi"
