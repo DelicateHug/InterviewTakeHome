@@ -14,6 +14,10 @@
 
 > Demo accounts only: no Entra-side privileges, scoped to the AWS app, and every action in the one ITH account is bounded by the strict allow-list SCP [[41]](controls/41-account-scp.md). 
 
+> Only Path 3 allows detokenized values using PCR0 attested KMS keys(The key lives inside nitro enclave, not ec2, apps cant touch it.) KMS will only give that key to that enclave on that specific EC2. 
+<img width="1919" height="943" alt="image" src="https://github.com/user-attachments/assets/1241af53-eae3-491b-977f-e2ef2556098f" />
+
+
 > **💡 Tip — review this with an AI:** the fastest way through this take-home is to clone/download the repo (or at minimum this `README.md` + the [`controls/`](controls/README.md) folder) locally and load it into the AI assistant of your choice. Every design decision is written up as a `[NN]` control page, so you can ask it to explain a path, quiz you on the controls, or sanity-check the threat model against the code/Terraform — all without touching the live account.
 ---
 
