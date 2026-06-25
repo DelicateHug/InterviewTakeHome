@@ -1,0 +1,40 @@
+# ---- Terraform ----
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfvars            # may contain emails / ids — commit *.tfvars.example only
+!*.tfvars.example
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+.terraform.lock.hcl  # keep? we intentionally ignore to avoid platform churn
+
+# ---- Build artifacts (lambda zips, layers) ----
+*.zip
+dist/
+build/
+
+# ---- Synthea tooling (large jar, raw run output) ----
+.tools/
+data/synthea-raw/
+
+# ---- Secrets / creds (must NEVER hit a public repo) ----
+*.pem
+*.key
+.env
+.env.*
+aws-creds*
+azure-creds*
+credentials.json
+
+# ---- OS / editor ----
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
