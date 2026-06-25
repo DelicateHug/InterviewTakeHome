@@ -1,0 +1,27 @@
+{
+  "schema": "ith.patient.deident/v1",
+  "pseudo_id": "p_90d6a6d654ecbc5a",
+  "gender": "female",
+  "age_band": "30-39",
+  "state": "MA",
+  "conditions": [
+    "Acute bronchitis (disorder)",
+    "Acute viral pharyngitis (disorder)",
+    "Body mass index 30+ - obesity (finding)",
+    "Dependent drug abuse (disorder)",
+    "Eclampsia in pregnancy (disorder)",
+    "Full-time employment (finding)",
+    "Gingivitis (disorder)",
+    "Medication review due (situation)",
+    "Normal pregnancy (finding)",
+    "Not in labor force (finding)",
+    "Overdose (disorder)",
+    "Part-time employment (finding)",
+    "Received higher education (finding)",
+    "Severe anxiety (panic) (finding)",
+    "Social isolation (finding)",
+    "Stress (finding)",
+    "Victim of intimate partner abuse (finding)",
+    "Viral sinusitis (disorder)"
+  ]
+}

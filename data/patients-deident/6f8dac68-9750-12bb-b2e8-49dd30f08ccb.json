@@ -1,0 +1,28 @@
+{
+  "schema": "ith.patient.deident/v1",
+  "pseudo_id": "p_151ae73a8198d118",
+  "gender": "male",
+  "age_band": "20-29",
+  "state": "MA",
+  "conditions": [
+    "Child attention deficit disorder (disorder)",
+    "Chronic sinusitis (disorder)",
+    "Concussion injury of brain (disorder)",
+    "Concussion with no loss of consciousness (disorder)",
+    "Epilepsy (disorder)",
+    "Full-time employment (finding)",
+    "Gingival disease (disorder)",
+    "Gingivitis (disorder)",
+    "History of seizure (situation)",
+    "Medication review due (situation)",
+    "Otitis media (disorder)",
+    "Primary dental caries (disorder)",
+    "Received higher education (finding)",
+    "Refugee (person)",
+    "Risk activity involvement (finding)",
+    "Seizure disorder (disorder)",
+    "Sinusitis (disorder)",
+    "Stress (finding)",
+    "Viral sinusitis (disorder)"
+  ]
+}

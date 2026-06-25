@@ -1,0 +1,18 @@
+{
+  "schema": "ith.patient.deident/v1",
+  "pseudo_id": "p_edfb0db910015f84",
+  "gender": "male",
+  "age_band": "20-29",
+  "state": "MA",
+  "conditions": [
+    "Concussion injury of brain (disorder)",
+    "Concussion with no loss of consciousness (disorder)",
+    "Full-time employment (finding)",
+    "Gingivitis (disorder)",
+    "Medication review due (situation)",
+    "Part-time employment (finding)",
+    "Received higher education (finding)",
+    "Risk activity involvement (finding)",
+    "Viral sinusitis (disorder)"
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "schema": "ith.patient.sensitive/v1",
+  "patient_id": "5268b482-2e3c-3e69-c90c-f03d39de723f",
+  "token_epoch": 1,
+  "name_given": "tok:v1:odfeYFD7nFQB9mthkv7Rct--A3gEpx8",
+  "name_family": "tok:v1:ChEvkqGkAfsoL1_FpDaYl9HDQSjhl7RZrAUznQ",
+  "ssn": "tok:v1:MjZpqIpZlMLo5gSPHIrTHzvMp6ktAyFOXmx7",
+  "mrn": "tok:v1:U9KCeIWOWBXn2a_92y7f8ti5CoWDAIDVEyaAKNd8Xv7U6xbDJrukmT-FqkrwIQfj-fxtjg",
+  "phone": "tok:v1:oebvBgwcFNhoKkXz8wLml1SRWqYdBWFEdOIDKA",
+  "email": "",
+  "address_line": "tok:v1:b3ESgbQBGYJdcIPHpaAohgiUIWP47txBtq3x_kTEIMFdtVFVszh2",
+  "postal_code": "tok:v1:Mqr-Z-oLqqgfzd7O3wnOt5xIlzH2",
+  "birth_date": "tok:v1:MLbV10mc5-n0ipuF8-4pHruIHhDtHGk7Zo4",
+  "gender": "male",
+  "city": "Ludlow",
+  "state": "MA",
+  "conditions": [
+    "Concussion injury of brain (disorder)",
+    "Concussion with no loss of consciousness (disorder)",
+    "Full-time employment (finding)",
+    "Gingivitis (disorder)",
+    "Medication review due (situation)",
+    "Part-time employment (finding)",
+    "Received higher education (finding)",
+    "Risk activity involvement (finding)",
+    "Viral sinusitis (disorder)"
+  ]
+}

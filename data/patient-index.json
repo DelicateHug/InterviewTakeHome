@@ -1,0 +1,47 @@
+{
+  "token_epoch": 1,
+  "patients": [
+    {
+      "patient_id": "2a013c39-180b-b181-09a3-b3637bb46f3a",
+      "key_id": "5881a8ae800a",
+      "sensitive_object": "patients/2a013c39-180b-b181-09a3-b3637bb46f3a.json",
+      "deident_object": "patients/2a013c39-180b-b181-09a3-b3637bb46f3a.json"
+    },
+    {
+      "patient_id": "6f8dac68-9750-12bb-b2e8-49dd30f08ccb",
+      "key_id": "5fb3b7a8fcff",
+      "sensitive_object": "patients/6f8dac68-9750-12bb-b2e8-49dd30f08ccb.json",
+      "deident_object": "patients/6f8dac68-9750-12bb-b2e8-49dd30f08ccb.json"
+    },
+    {
+      "patient_id": "5268b482-2e3c-3e69-c90c-f03d39de723f",
+      "key_id": "fa04baf90f3a",
+      "sensitive_object": "patients/5268b482-2e3c-3e69-c90c-f03d39de723f.json",
+      "deident_object": "patients/5268b482-2e3c-3e69-c90c-f03d39de723f.json"
+    },
+    {
+      "patient_id": "1e56e84c-8b51-426a-8dcf-efcec12471fc",
+      "key_id": "49429bb9da2e",
+      "sensitive_object": "patients/1e56e84c-8b51-426a-8dcf-efcec12471fc.json",
+      "deident_object": "patients/1e56e84c-8b51-426a-8dcf-efcec12471fc.json"
+    },
+    {
+      "patient_id": "088047ea-5cf6-2dfd-3b89-c0c8a1813de8",
+      "key_id": "301f457c1a1b",
+      "sensitive_object": "patients/088047ea-5cf6-2dfd-3b89-c0c8a1813de8.json",
+      "deident_object": "patients/088047ea-5cf6-2dfd-3b89-c0c8a1813de8.json"
+    },
+    {
+      "patient_id": "e58580f0-9f51-8db5-250e-558069d1de03",
+      "key_id": "270705620280",
+      "sensitive_object": "patients/e58580f0-9f51-8db5-250e-558069d1de03.json",
+      "deident_object": "patients/e58580f0-9f51-8db5-250e-558069d1de03.json"
+    },
+    {
+      "patient_id": "1c68a5e1-98c6-30a5-883a-db0a30be8258",
+      "key_id": "ef9c11353c24",
+      "sensitive_object": "patients/1c68a5e1-98c6-30a5-883a-db0a30be8258.json",
+      "deident_object": "patients/1c68a5e1-98c6-30a5-883a-db0a30be8258.json"
+    }
+  ]
+}
