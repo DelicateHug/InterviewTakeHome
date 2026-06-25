@@ -1,0 +1,48 @@
+#!/bin/bash
+set -xe
+# "On-prem" Kubernetes node: single-node k3s (installed via the datacenter's internet
+# egress / IGW). A CronJob reads the SENSITIVE bucket across the VPC PEERING using the
+# workload S3 INTERFACE endpoint, authorized by the node instance role + aws:sourceVpce.
+export HOME=/root
+
+curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable traefik --disable servicelb" sh -
+export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+
+# wait for the node to be Ready
+for i in $(seq 1 40); do
+  /usr/local/bin/kubectl get nodes 2>/dev/null | grep -q " Ready" && break
+  sleep 5
+done
+
+cat >/root/phi-reader.yaml <<EOF
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: phi-reader
+spec:
+  schedule: "*/5 * * * *"
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+          - name: awscli
+            image: public.ecr.aws/aws-cli/aws-cli:latest
+            command: ["/bin/sh","-c"]
+            args:
+              - >
+                aws s3api get-object
+                --bucket ${bucket}
+                --key ${sample_key}
+                --endpoint-url https://${s3_vpce_dns}
+                --region ${region}
+                /tmp/o
+                && echo "READ_OK $(wc -c </tmp/o) bytes from ${bucket}/${sample_key} via ${s3_vpce_dns}"
+EOF
+
+/usr/local/bin/kubectl apply -f /root/phi-reader.yaml
+# one immediate run for evidence
+/usr/local/bin/kubectl create job phi-reader-init --from=cronjob/phi-reader || true
+echo "k3s + phi-reader deployed"

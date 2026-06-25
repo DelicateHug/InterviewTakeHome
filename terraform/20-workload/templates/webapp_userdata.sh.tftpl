@@ -1,0 +1,30 @@
+#!/bin/bash
+set -xe
+mkdir -p /opt/ith
+echo "${server_py_b64}" | base64 -d > /opt/ith/server.py
+
+cat >/etc/ith.env <<EOF
+ITH_BUCKET=${bucket}
+ITH_REGION=${region}
+ITH_KEYS=${keys}
+ITH_PORT=8080
+EOF
+
+cat >/etc/systemd/system/ith-webapp.service <<'EOF'
+[Unit]
+Description=ITH ePHI viewer (human read path P3)
+After=network-online.target
+Wants=network-online.target
+[Service]
+EnvironmentFile=/etc/ith.env
+ExecStart=/usr/bin/python3 /opt/ith/server.py
+Restart=always
+RestartSec=3
+User=root
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable --now ith-webapp.service
+echo "ith-webapp started"
