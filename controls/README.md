@@ -18,6 +18,7 @@ below (and matches the homepage diagrams). See also
 
 - S3 guardrail SCP [[07]](07-scp.md)
 - Strict account allow-list SCP [[41]](41-account-scp.md)
+- EC2 launch freeze SCP — no new instances post-deploy [[45]](45-ec2-launch-freeze.md)
 - Permissions boundary caps SuperAdmin — no KMS [[42]](42-permission-boundary.md)
 - Protect-detection SCP — deny tampering with the monitors [[60]](60-protect-detection.md)
 - RCP — deny S3 outside the org [[08]](08-rcp.md)
@@ -100,6 +101,9 @@ below (and matches the homepage diagrams). See also
 | [[40]](40-change-alerter.md) | [Change / CreateUser alerter](40-change-alerter.md) | CloudWatch metric filters + alarms (3) |
 | [[41]](41-account-scp.md) | [Strict account allow-list SCP](41-account-scp.md) | Service Control Policy |
 | [[42]](42-permission-boundary.md) | [SuperAdmin permissions boundary](42-permission-boundary.md) | IAM permissions boundary (customer-managed) |
+| [[43]](43-enclave-kms-key.md) | [Attestation-gated enclave KMS key](43-enclave-kms-key.md) | Customer-managed KMS CMK (`alias/ith/enclave`) with a Nitro-attestation condition |
+| [[44]](44-nitro-enclave.md) | [Attested Nitro Enclave + read/write pod (P5)](44-nitro-enclave.md) | AWS Nitro Enclave on the on-prem k8s node + a k8s Job that reads/writes S3 |
+| [[45]](45-ec2-launch-freeze.md) | [EC2 launch freeze SCP](45-ec2-launch-freeze.md) | Service Control Policy (deny new instance launch) |
 | [[60]](60-protect-detection.md) | [Detection self-protection](60-protect-detection.md) | Service Control Policy + CloudWatch alarm |
 
 [< home](../README.md)

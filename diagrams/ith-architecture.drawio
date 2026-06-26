@@ -92,7 +92,7 @@
         <mxCell id="p2-onprem" value="[10] On-prem VPC &#8212; 192.168.0.0/16  (has IGW / internet)" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#fff5e6;strokeColor=#d79b00;dashed=1;fontStyle=1;fontSize=13;container=1;collapsible=0;spacingTop=6;" vertex="1" parent="1">
           <mxGeometry x="40" y="120" width="380" height="360" as="geometry" />
         </mxCell>
-        <mxCell id="p2-k3s" value="[11] on-prem k3s node&#10;EC2 i-0a3dfcb0&#8230;&#10;(pod / node IAM role)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="p2-onprem">
+        <mxCell id="p2-k3s" value="[11] on-prem k3s node&#10;EC2 i-0303f39b&#8230;&#10;(pod / node IAM role)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="p2-onprem">
           <mxGeometry x="40" y="60" width="300" height="80" as="geometry" />
         </mxCell>
         <mxCell id="p2-onprem-sg" value="[12] on-prem node SG&#10;(used as SOURCE in endpoint SG ingress&#10;&#8212; SG-as-source over peering, R17)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;dashed=1;" vertex="1" parent="p2-onprem">
@@ -334,7 +334,7 @@
         <mxCell id="p4-cwl" value="[51] CloudWatch Logs&#10;/ith/cloudtrail" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1">
           <mxGeometry x="400" y="125" width="240" height="80" as="geometry" />
         </mxCell>
-        <mxCell id="p4-mf" value="[52] 9 metric-filter alarms&#10;root usage &#183; console-without-MFA &#183; unauthorized API&#10;IAM/policy change &#183; S3 policy change &#183; KMS disable/sched-delete&#10;CloudTrail tamper &#183; GuardDuty high-sev &#183; AssumeRole-from-unexpected-IP&#10;(+ S3 4xx/AccessDenied spike, SG change)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1">
+        <mxCell id="p4-mf" value="[52] 9 metric-filter alarms&#10;root usage &#183; console-without-MFA &#183; unauthorized API&#10;IAM/policy change &#183; S3 policy change &#183; KMS disable/sched-delete&#10;CloudTrail tamper &#183; SG change &#183; S3 AccessDenied" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1">
           <mxGeometry x="700" y="100" width="440" height="130" as="geometry" />
         </mxCell>
 

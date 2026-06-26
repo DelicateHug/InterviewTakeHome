@@ -32,6 +32,20 @@ variable "account_email" {
   default     = "dylanheathsmart+ith-workload@gmail.com"
 }
 
+variable "ec2_launch_admin_principal_arns" {
+  description = <<-EOT
+    Principal ARNs still allowed to LAUNCH EC2 instances after the fleet is deployed. The
+    demo's instances (webapp [28], on-prem k3s node [30]) are already running and nothing in
+    the demo ever needs more compute, so the no-new-ec2 SCP [45] denies RunInstances/Spot/Fleet
+    for everyone else - even ITH-SuperAdmin - so a reviewer cannot spin up extra instances to
+    run code or pivot. Defaults to the IaC break-glass role only, so the stack can still be
+    redeployed/replaced from the management account. In production, scope this to your CI/CD
+    deploy role ARN instead of OrganizationAccountAccessRole.
+  EOT
+  type        = list(string)
+  default     = ["arn:aws:iam::*:role/OrganizationAccountAccessRole"]
+}
+
 variable "detection_admin_principal_arns" {
   description = <<-EOT
     Principal ARNs allowed to MODIFY the detection stack (CloudWatch alarms/metric filters,

@@ -118,6 +118,30 @@ Left doc-only under the same no-tenant-changes guardrail as CA [04]: the SCP its
 [07]/[41] and wouldn't break the tenant, but it depends on the Entra→IdC device-posture attribute
 mapping, which isn't wired in while the CA config is disabled.
 
+### Any attempt to reach the EC2 outside SSM alerts — by construction
+
+There is **no second way onto the box**. The EC2 web app [28] has **no public IP, no SSH key pair,
+and the app SG [17] has no inbound rules at all** — the only path is SSM port-forward through the SSM
+interface endpoint [15]. So an attacker can't *reach* it off the SSM path; they would first have to
+**manufacture** a path, and every way of doing that alerts:
+
+- **Open an inbound port / add a public IP / attach a key pair / re-route to it.** Each is a mutating
+  EC2 or security-group API call (`AuthorizeSecurityGroupIngress`, `CreateSecurityGroup`,
+  `ModifyInstanceAttribute`, `AssociateAddress`, route-table edits) → caught **twice**: the
+  **sg-change alarm [35]** and the catch-all **change-alerter [40]** `unauthorized-change` filter
+  (any non-SuperAdmin mutation) → SNS [36]. The path-opening itself trips the alarm *before* any
+  traffic flows.
+- **A blocked SSM call.** A denied `ssm:StartSession` (e.g. stopped by the device-posture SCP above,
+  or any other deny) writes `AccessDenied` to CloudTrail [33] → the **`unauthorized-api` alarm [35]**
+  (`AccessDenied*` / `*UnauthorizedOperation`) → SNS [36] — the SSM analogue of the `s3-access-denied`
+  alarm.
+- **Instance-role creds replayed off the box.** EC2 role [29] credentials used from an IP outside AWS
+  or from another AWS account → GuardDuty `InstanceCredentialExfiltration.OutsideAWS` / `.InsideAWS`
+  [37] → SNS [36].
+
+Net: reaching the EC2 outside SSM is either **impossible without a mutation that alerts**, or a
+**denied API call that alerts** — there is no silent non-SSM path.
+
 ## Root protection via AWS Organizations — out of scope here
 
 The ITH root user [05] lives in the **management account we don't fully own**, so we don't
@@ -214,6 +238,28 @@ Anomaly-driven detection layered on top of the static rules, split by side:
   traffic on the AWS backbone and powers the `aws:sourceVpce` gate.
 - **Vaultless tokens:** deterministic (enables equality joins) = a re-identification surface
   vs. random vault tokens — acceptable for de-identified analytics.
+
+## Enclave attestation — PCR0 only (PCR4 / instance-scoping is the prod hardening)
+
+The attestation-gated enclave key [43] is bound to **PCR0** — the measurement of the
+**enclave image** (its code). That proves *which program* is asking, but **not which
+machine** it runs on: a copy of the same EIF on any enclave-capable instance in the
+account would produce the same PCR0 and satisfy the gate.
+
+- **Why PCR0 is enough here:** in this deployment the enclave image is built and run on a
+  single, SSM-only node we control, and only that node's role is granted the key in IAM, so
+  PCR0 (code identity) is the meaningful axis to pin.
+- **Prod hardening — scope the key's workloads to specific instances.** To make PCR0
+  genuinely sufficient you ensure the measured image can *only* run where intended:
+  restrict who can launch enclave-capable instances / run the EIF (SCP + launch-template
+  controls), and pin the workload to known hosts. Then "the right code" also implies "the
+  right machine."
+- **PCR4 is the direct mechanism for instance-binding.** Nitro also measures **PCR4 = the
+  parent instance ID** (and PCR3 = the IAM role). Adding a
+  `kms:RecipientAttestation:PCR4 == <instance-id>` condition alongside PCR0 binds the key to
+  **one specific EC2 instance** as well as one specific image — literally "attestation from
+  *that* EC2." We left it at PCR0 to keep the EIF/host decoupled (re-launching the node
+  doesn't require re-locking the key on a new instance id), and documented the trade here.
 
 ---
 [< controls index](README.md) | [< home](../README.md)

@@ -4,11 +4,11 @@
 
 **Login (AWS access portal):** **https://d-96677e53fe.awsapps.com/start/**
 
-| Sign in with | Permission set | Scope | Password |
-|---|---|---|---|
-| `ith-superadmin@delicatehug.com` | `ITH-SuperAdmin` | everything **except KMS** — a permissions boundary [[42]](controls/42-permission-boundary.md) caps the max; account SCP [[41]](controls/41-account-scp.md) caps the rest | `Falcon-Ridge-7742!` |
-| `ith-admin@delicatehug.com` | `ITH-Admin` | relevant services, **`Deny kms:*`** (inline) | `Cobalt-Harbor-7742!` |
-| `ith-s3@delicatehug.com` | `ITH-S3Reader` | read S3 **only inside the VPC** | `Maple-Lagoon-7742!` |
+| Sign in with                     | Permission set   | Scope                                                                                                                                                                    | Password              |
+| -------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------- |
+| `ith-superadmin@delicatehug.com` | `ITH-SuperAdmin` | everything **except KMS** — a permissions boundary [[42]](controls/42-permission-boundary.md) caps the max; account SCP [[41]](controls/41-account-scp.md) caps the rest | `Falcon-Ridge-7742!`  |
+| `ith-admin@delicatehug.com`      | `ITH-Admin`      | relevant services, **`Deny kms:*`** (inline)                                                                                                                             | `Cobalt-Harbor-7742!` |
+| `ith-s3@delicatehug.com`         | `ITH-S3Reader`   | read S3 **only inside the VPC**                                                                                                                                          | `Maple-Lagoon-7742!`  |
 
 > **Two roles, no KMS — *different* mechanisms (the point of [[42]](controls/42-permission-boundary.md)):** `ITH-Admin` is denied KMS by an explicit **`Deny kms:*`** in its policy; `ITH-SuperAdmin` is denied KMS by a **permissions boundary** — a *ceiling* that caps the role's maximum to "everything except `kms:*`" with **no Deny at all**. Even `AdministratorAccess` (`Allow *`) can't reach KMS because the effective permission is `identity ∩ boundary`.
 
@@ -18,7 +18,7 @@
 <img width="1919" height="943" alt="image" src="https://github.com/user-attachments/assets/1241af53-eae3-491b-977f-e2ef2556098f" />
 
 
-> **💡 Tip — review this with an AI:** the fastest way through this take-home is to clone/download the repo (or at minimum this `README.md` + the [`controls/`](controls/README.md) folder) locally and load it into the AI assistant of your choice. Every design decision is written up as a `[NN]` control page, so you can ask it to explain a path, quiz you on the controls, or sanity-check the threat model against the code/Terraform — all without touching the live account.
+> **review this with an AI:** Download to local and ask ai about it.
 ---
 
 ## Key resources
@@ -34,6 +34,8 @@ Everything lives in **one account in one region** — copy/paste exact names fro
 | **CloudTrail log bucket** | `ith-cloudtrail-118821711925` |
 | **CloudTrail** | `ith-trail` — multi-region, log-file validation, management **+** S3 object-level (data) events on both buckets. |
 | **CloudWatch alarms** | [console → CloudWatch → Alarms](https://ap-southeast-1.console.aws.amazon.com/cloudwatch/home?region=ap-southeast-1#alarmsV2:?~()) — filter by prefix **`ith-`**. 12 alarms total: 9 CIS-style [[35]](controls/35-alarms.md) + 3 change/CreateUser/detection-tampering [[40]](controls/40-change-alerter.md); the detection stack itself is locked by the protect-detection SCP [[60]](controls/60-protect-detection.md) (prevent + detect). |
+
+> **Bucket naming — demo vs production:** S3 bucket names are **global** across all of AWS, so these demo buckets are namespaced with the account ID (`phi-sensitive-118821711925`) to stay unique. In **production**, fully account- **and** region-namespace them — `<name>-<account-id>-<region>-<rand>`, e.g. `phi-sensitive-118821711925-ap-southeast-1-an` — so the same stack can deploy per-region without name collisions, and a deleted bucket name can't be **sniped/squatted** by another account before you recreate it. (`-an` = a short random/nonce suffix.)
 
 ---
 
@@ -56,6 +58,7 @@ flowchart TB
     SCP7["[07] SCP S3 guardrails"] -. on OU .-> OU
     RCP["[08] RCP deny S3 outside org"] -. on OU .-> OU
     SCP41["[41] strict allow-list SCP"] -. on acct .-> ACCT
+    SCP45["[45] no-new-EC2 SCP<br/>fleet frozen post-deploy"] -. on acct .-> ACCT
   end
   PS -->|assigned on| ACCT
 ```
@@ -95,6 +98,14 @@ flowchart LR
   G --> S["[20] sensitive bucket"]
 ```
 
+- **P5 — Attested enclave read/write** · *role: on-prem node role [[31]](controls/31-onprem-role.md), but gated by hardware attestation.* The on-prem node runs a **Nitro Enclave [[44]](controls/44-nitro-enclave.md)**; a pod reads **and writes** the bucket, but the crypto is gated by a KMS key [[43]](controls/43-enclave-kms-key.md) that unlocks **only** for the measured enclave image (PCR0). Even the node OS / its IAM role / root cannot decrypt — only the enclave can. Reuses P2's peering + interface endpoint; client-side envelope crypto happens inside the enclave.
+
+```mermaid
+flowchart LR
+  POD["[44] phi-rw-enclave pod<br/>(ciphertext only)"] -->|vsock| ENC["[44] Nitro Enclave<br/>PCR0 attested"]
+  ENC -->|"Decrypt / GenerateDataKey<br/>only if PCR0 matches"| K["[43] enclave KMS key"]
+  POD -->|"[12] peering → [14] interface endpoint<br/>read/write enclave/*"| S["[20] sensitive bucket"]
+```
 ### Detection & response
 
 ```mermaid
@@ -109,7 +120,6 @@ flowchart LR
 > **Watch the alarms live:** [console → CloudWatch → Alarms](https://ap-southeast-1.console.aws.amazon.com/cloudwatch/home?region=ap-southeast-1#alarmsV2:?~()) (filter by prefix `ith-`). Trip one yourself by running any *denied* command below as `ith-s3`, then refresh — the `ith-s3-access-denied` alarm flips to `ALARM`.
 
 ---
-
 ## Demo — try it yourself
 
 The `aws ssm start-session` commands (paths P2/P3) need the **AWS CLI v2** *and* the **Session Manager plugin**. Without the plugin the CLI errors with `SessionManagerPlugin is not found`. Install it once on Windows (PowerShell):
@@ -122,7 +132,6 @@ curl.exe -sSL -o $o $u ; Start-Process $o -Verb RunAs -Wait   # accept the UAC p
 
 Official guide (incl. macOS/Linux): <https://docs.aws.amazon.com/systems-manager/latest/userguide/install-plugin-windows.html> — verify with `session-manager-plugin --version`.
 
-
 > Your laptop / CloudShell are **outside the VPC**, so VPC-locked reads return `AccessDenied` *by design* — that's the control working, not a bug. All commands use region `ap-southeast-1`.
 
 ### Every command, once — who it works for
@@ -134,7 +143,7 @@ aws lambda invoke --function-name ith-redactor --payload '{"queryStringParameter
 
 # ── P2 · full object across VPC peering via the S3 *interface* endpoint (read runs as node role [31], in-VPC)
 #    ✓ super · – admin (not demoed) · ✗ s3 (no ssm:)
-aws ssm start-session --target i-032177597ad315d32 --region ap-southeast-1          # SSM into the k3s node first…
+aws ssm start-session --target i-0303f39bf8f751014 --region ap-southeast-1          # SSM into the k3s node first…
 aws s3api get-object --bucket phi-sensitive-118821711925 --key patients/088047ea-5cf6-2dfd-3b89-c0c8a1813de8.json --endpoint-url https://bucket.vpce-000ca0be99fa5595c-dkt1diqi.s3.ap-southeast-1.vpce.amazonaws.com --region ap-southeast-1 /tmp/p.json && head -c 300 /tmp/p.json   # …then, inside that session
 
 # ── P3 · human read path — SSM port-forward to the EC2 web app, then open http://localhost:8080
@@ -164,20 +173,22 @@ aws s3api get-object --bucket phi-sensitive-118821711925 --key patients/088047ea
 aws s3 ls s3://phi-sensitive-118821711925/patients/ --region ap-southeast-1
 #    …the SAME read SUCCEEDS once you're inside the VPC (this is P2) — read runs as the k3s node role [31]:
 #    ✓ super · – admin (not demoed; admin reads via P3 web UI) · ✗ s3 (no ssm:)
-aws ssm start-session --target i-032177597ad315d32 --region ap-southeast-1                                   # 1) SSM onto the k3s node = get inside the VPC
+aws ssm start-session --target i-0303f39bf8f751014 --region ap-southeast-1                                   # 1) SSM onto the k3s node = get inside the VPC
 aws s3api get-object --bucket phi-sensitive-118821711925 --key patients/088047ea-5cf6-2dfd-3b89-c0c8a1813de8.json --endpoint-url https://bucket.vpce-000ca0be99fa5595c-dkt1diqi.s3.ap-southeast-1.vpce.amazonaws.com --region ap-southeast-1 /tmp/p.json && head -c 300 /tmp/p.json   # 2) through the interface endpoint → READ_OK
 
 # ── Any service outside the demo allow-list — account SCP [41] caps even full admin
 #    ✗ super (rds not in [41]; admin & s3 lack rds too)
 aws rds describe-db-instances --region ap-southeast-1
-```
 
-> **Break-glass:** if KMS admin is genuinely needed, reach it from the **management account** via `OrganizationAccountAccessRole` — outside this permission set/boundary. The boundary [[42]](controls/42-permission-boundary.md) caps the *SSO role*, not every path into the account.
+# ── Launch a NEW EC2 instance — the fleet is frozen post-deploy by the no-new-EC2 SCP [45]
+#    ✗ super · ✗ admin · ✗ s3   (RunInstances/Spot/Fleet denied for everyone but the IaC break-glass role)
+#    --dry-run returns UnauthorizedOperation (the deny); without [45] it would say DryRunOperation.
+aws ec2 run-instances --dry-run --image-id ami-0df7a207adb9748c7 --instance-type t3.micro --region ap-southeast-1
+```
 
 > **Watch a control fire:** every `AccessDenied` above is logged to CloudTrail. Run any denied call as `ith-s3`, then sign back in as `ith-admin` / `ith-superadmin` and re-run the `describe-alarms` command — the `ith-s3-access-denied` alarm [[35]](controls/35-alarms.md) flips to `ALARM`.
 
 ---
-
 ## Documentation
 
 | Where | What |

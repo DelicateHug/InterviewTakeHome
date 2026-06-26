@@ -38,19 +38,48 @@ verified with real calls — not mock-ups.
 - Vaultless tokenization round-trip proven by `app/tokenizer/tokenize.py`:
   `ssn` token `tok:v1:…` detokenizes back to `999-34-3195`.
 
-## The four paths (all verified)
+## The five paths (all verified)
 
 | Path | Test | Result |
 |---|---|---|
 | **P1** Lambda redactor | `lambda invoke ith-redactor {key: patients/088047ea….json}` | `200` + JSON containing **only** `gender/state/conditions/_redacted_by` — no identifiers. ✅ |
 | **P2** on-prem k8s | k3s pod `aws s3api get-object … --endpoint-url https://bucket.vpce-000ca0be9….vpce.amazonaws.com` (across peering) | `READ_OK … via interface-vpce across peering`; response shows `SSEKMSKeyId` = per-patient CMK. ✅ |
-| **P3** EC2 web app | `curl http://localhost:8080/` over SSM port-forward on `i-004a73751e979b264` | `systemctl=active`, `/healthz=ok`, renders all 7 records with identifiers **tokenized**. ✅ |
+| **P3** EC2 web app | `curl http://localhost:8080/` over SSM port-forward on `i-004a73751e979b264` | `systemctl=active`, `/healthz=ok`, renders all 7 records **tokenized**, *and* a second table that **detokenizes** them (AES-SIV epoch key) to prove the path can reverse when authorised. ✅ |
 | **P4** `s3` user | assume `ith-s3-reader-role` from a laptop (no VPC) then `get-object` | `AccessDenied … explicit deny in a resource-based policy` (the VPC gate). In-VPC the same call works (= P3 mechanism). ✅ |
+| **P5** attested enclave R/W | `kubectl logs job/phi-rw-enclave` on the Nitro-enabled node `i-0303f39bf8f751014` | pod `WROTE … enclave/<id>.enc` then `READ_OK {…}` with `ROUNDTRIP_MATCH=yes` — encrypt+decrypt done **inside the enclave**; the node role calling KMS **without** attestation is **denied**. ✅ |
 
 ### C1 — humans can't read directly (must use the EC2 UI)
 From the management/laptop context, `s3api head-object` / `list-objects` on
 `phi-sensitive-118821711925` returns **`AccessDenied … explicit deny`** — direct human
 reads are blocked; the only human read path is the in-VPC EC2 web app.
+
+### P5 — attested Nitro Enclave read/write (the strongest control)
+
+Node `i-0303f39bf8f751014` (`c6i.xlarge`, `enclave_options` on) runs a Nitro Enclave; the
+key `alias/ith/enclave` (`…/key/aaaccd84…`) denies `Decrypt`/`GenerateDataKey` unless the
+caller presents a Nitro attestation whose **PCR0** matches the measured image.
+
+- **Enclave measured & running:** `nitro-cli describe-enclaves` →
+  `State RUNNING, CID 16`, `PCR0 = f5ec5cdfcd6242a0e278fe3a6c5681ebd8719aa90a02e6ad5e844812d42219e419ee5dd0d83fa28edb4c75ddf9c4d0e1`.
+  The same value is locked into the key policy (Terraform `enclave_pcr0`) and published to
+  SSM `/ith/enclave/pcr0`.
+- **Round-trip (positive):** `kubectl logs job/phi-rw-enclave` →
+  `encrypt -> {"ok": true, …}` · `WROTE s3://phi-sensitive-118821711925/enclave/2a013c39….enc`
+  · `READ_OK {"patient_id":"2a013c39…","ssn":"999-00-1234","name":"Enclave Demo","note":"written via attested Nitro Enclave (PCR0-gated KMS)"}`
+  · **`ROUNDTRIP_MATCH=yes`** (`phase=Succeeded`). Encrypt and decrypt both happen **inside**
+  the enclave (AES-256-GCM); the pod only ever holds ciphertext.
+- **Negative test (the proof):** the *same* node role, calling KMS directly with **no
+  attestation** →
+  `aws kms generate-data-key --key-id alias/ith/enclave --key-spec AES_256` →
+  **`AccessDeniedException … explicit deny in a resource-based policy`**. So neither the node
+  OS, nor its IAM role, nor root can unwrap the data — only the measured enclave.
+- **At rest:** the stored object `enclave/2a013c39….enc` is **562 bytes of opaque
+  ciphertext**, `ServerSideEncryption = aws:kms` under a **different** key
+  (`…/key/b43be968…`, the bucket default — *not* the enclave key, which by design can't be an
+  SSE key). Client-side envelope + SSE-KMS at rest = defence in depth.
+
+> PCR0-only by choice; `controls/OutOfScopeNotes.md` explains how prod would also bind the
+> instance (PCR4) and scope the key's workloads to specific hosts.
 
 ## Detection / response (R4/R11/R12)
 

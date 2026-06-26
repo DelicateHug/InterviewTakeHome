@@ -138,6 +138,53 @@ resource "aws_organizations_policy_attachment" "scp_allowlist_to_account" {
   target_id = aws_organizations_account.workload.id
 }
 
+# ---- [45] Freeze the EC2 fleet : deny launching NEW instances post-deploy ------------
+# The demo's EC2 instances - webapp [28] and the on-prem k3s node [30] - are already
+# provisioned and running, and nothing in the demo ever needs MORE compute. So we close
+# that surface entirely: a reviewer exploring the account (even as ITH-SuperAdmin) cannot
+# spin up extra instances to run code, mine, or pivot. The allow-list SCP [41] grants
+# ec2:*, but an explicit Deny here wins over it.
+#
+# Covers EVERY launch path, not just the console "Launch instance" button:
+#   RunInstances, RunScheduledInstances, CreateFleet, RequestSpotInstances, RequestSpotFleet.
+# StartInstances is deliberately NOT denied so the already-provisioned demo nodes can still be
+# stopped/started for cost. The IaC break-glass role (OrganizationAccountAccessRole) is exempt
+# via var.ec2_launch_admin_principal_arns so the stack can still be redeployed/replaced from
+# the management account.
+resource "aws_organizations_policy" "scp_no_new_ec2" {
+  name        = "ith-scp-no-new-ec2"
+  description = "Deny launching new EC2 instances; the demo fleet is already deployed."
+  type        = "SERVICE_CONTROL_POLICY"
+
+  content = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "DenyNewInstanceLaunch"
+        Effect = "Deny"
+        Action = [
+          "ec2:RunInstances",
+          "ec2:RunScheduledInstances",
+          "ec2:CreateFleet",
+          "ec2:RequestSpotInstances",
+          "ec2:RequestSpotFleet",
+        ]
+        Resource = "*"
+        Condition = {
+          ArnNotLike = { "aws:PrincipalArn" = var.ec2_launch_admin_principal_arns }
+        }
+      }
+    ]
+  })
+
+  tags = local.tags
+}
+
+resource "aws_organizations_policy_attachment" "scp_no_new_ec2_to_account" {
+  policy_id = aws_organizations_policy.scp_no_new_ec2.id
+  target_id = aws_organizations_account.workload.id
+}
+
 # ---- [60] Protect the detection stack : deny tampering with the monitors -------------
 # "Who watches the watchers." Detection you can silently delete is not detection. Even
 # SuperAdmin must not be able to delete an alarm, drop a metric filter, mute the SNS topic,
