@@ -1,5 +1,14 @@
 # Securing a Sensitive S3 Resource — AWS + Entra (Take-Home)
 
+> ## 🗄️ ARCHIVED — demo decommissioned (2026-06-30)
+>
+> This environment has been **torn down**; the take-home is no longer live.
+> - **AWS:** all 126 resources in account `118821711925` (`ith-workload`) were destroyed (`terraform destroy` on `20-workload`). Every bucket, EC2 instance, Lambda, VPC, CloudTrail, and alarm referenced below **no longer exists**; the per-patient KMS CMKs are scheduled for deletion. The Organization/OU/SCPs and Identity Center permission sets in the management account remain but are now inert.
+> - **Entra:** the 3 demo sign-in users (`ith-superadmin`, `ith-admin`, `ith-s3` @ `delicatehug.com`) have been **deleted** from the tenant.
+> - The **access portal login and all passwords in this document no longer work**, and every command, ARN, bucket name, and instance ID below is **historical** — kept only to show what was built.
+>
+> The Terraform/IaC and docs are preserved as a read-only reference. To recreate, re-apply the stacks in order (`00-org` → `10-identity` → `20-workload`) into a fresh account.
+
 ## Overview
 
 **Login (AWS access portal):** **https://d-96677e53fe.awsapps.com/start/**
@@ -197,4 +206,4 @@ aws ec2 run-instances --dry-run --image-id ami-0df7a207adb9748c7 --instance-type
 | [`controls/OutOfScopeNotes.md`](controls/OutOfScopeNotes.md) | Synthea, hardware-MFA (+ CA API JSON & how-to-verify), root protection (root-usage alert · centralize root access · multi-party approval), super-admin-only S3 (Config vs SCP), behavior/risk-based sign-in, tradeoffs |
 
 ---
-*Synthetic data only (Synthea) — no real PHI. Isolated; destroyed after verdict.*
+*Synthetic data only (Synthea) — no real PHI. Isolated; environment destroyed 2026-06-30 (see ARCHIVED notice at top).*
